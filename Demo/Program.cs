@@ -1,6 +1,8 @@
 ﻿using System;
 using System.CodeDom.Compiler;
+using System.IO;
 using Msdfgen.IO;
+using SharpMSDF.IO;
 using Typography.OpenFont;
 
 namespace Msdfgen.ManualTest
@@ -17,28 +19,21 @@ namespace Msdfgen.ManualTest
 
             var generator = Generate.Msdf();
             generator.Output = msdf;
-            generator.Range = 3.0;
-            generator.EdgeThreshold = 3.0;
+            generator.Range = 0.5;
+            generator.EdgeThreshold = 0.0;
             generator.Scale = new Vector2(scale);
 
-            for (int i = 0; i < 1; ++i)
-            {
-                shape.Normalize();
-                Coloring.EdgeColoringSimple(shape, 3.0);
-                generator.Shape = shape;
-                generator.Compute();
-                if (i % 100 == 0)
-                    Console.WriteLine(i);
-            }
+            shape.Normalize();
+            Coloring.EdgeColoringSimple(shape, 1.0);
+            generator.Shape = shape;
+            generator.Compute();
 
+            // MSDF
             Bmp.SaveBmp(msdf, "output.bmp");
-            {
-                // MDSF Text
-                var rast = new Bitmap<float>(1024, 1024);
-                Render.RenderSdf(rast, msdf, 6.0);
-                Bmp.SaveBmp(rast, "rasterized.bmp");
-            }
-            ImportFont.DestroyFont(font);
+            // Rendering Preview
+            var rast = new Bitmap<float>(1024, 1024);
+            Render.RenderSdf(rast, msdf, 6.0);
+            Bmp.SaveBmp(rast, "rasterized.bmp");
         }
     }
 }

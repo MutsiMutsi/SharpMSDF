@@ -82,6 +82,9 @@ namespace Msdfgen
     {
         private readonly Vector2[] _p;
 
+        public Vector2 P0 => _p[0];
+        public Vector2 P1 => _p[1];
+
         public LinearSegment(Vector2 p0, Vector2 p1, EdgeColor edgeColor = EdgeColor.White) : base(edgeColor)
         {
             _p = new[] {p0, p1};
@@ -144,6 +147,10 @@ namespace Msdfgen
     public class QuadraticSegment : EdgeSegment
     {
         private readonly Vector2[] _p;
+
+        public Vector2 P0 => _p[0];
+        public Vector2 P1 => _p[1];
+        public Vector2 P2 => _p[2];
 
         public QuadraticSegment(EdgeColor edgeColor, params Vector2[] p) :
             base(edgeColor)
