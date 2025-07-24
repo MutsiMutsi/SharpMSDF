@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
     public static class Arithmetic
     {
@@ -27,6 +27,12 @@ namespace Msdfgen
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Mix(float a, float b, double weight)
+        {
+            return (float) ((1.0 - weight) * a + weight * b);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Mix(double a, double b, double weight)
         {
             return (float) ((1.0 - weight) * a + weight * b);
         }

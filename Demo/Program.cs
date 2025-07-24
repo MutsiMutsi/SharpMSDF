@@ -2,8 +2,8 @@
 using System.CodeDom.Compiler;
 using System.IO;
 using Msdfgen.IO;
-using SharpMSDF.IO;
 using Typography.OpenFont;
+using SharpMSDF.Core;
 
 namespace Msdfgen.ManualTest
 {

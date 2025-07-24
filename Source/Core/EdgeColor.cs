@@ -1,6 +1,6 @@
 using System;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
     /// Edge color specifies which color channels an edge belongs to.
     [Flags]

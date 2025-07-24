@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
     public static class Generate
     {
@@ -436,13 +436,12 @@ namespace Msdfgen
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             protected override float ComputePixel(ref InstanceContext ctx)
             {
-                double dummy = 0;
-                for (var i = 0; i < Shape.Count; ++i)
+                for (var i = 0; i < Shape.Contours.Count; ++i)
                 {
                     var minDistance = SignedDistance.Infinite;
-                    foreach (var edge in Shape[i])
+                    foreach (var edge in Shape.Contours[i].Edges)
                     {
-                        var distance = edge.SignedDistance(ctx.P, ref dummy);
+                        var distance = edge.Segment.SignedDistance(ctx.P, out _);
                         if (distance < minDistance)
                             minDistance = distance;
                     }

@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
     /**
      * A 2-dimensional euclidean vector with double precision.
@@ -55,21 +55,29 @@ namespace Msdfgen
 
         /// Returns the normalized vector - one that has the same direction but unit length.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector2 Normalize()
-        {
-            var len = Length();
-            return len == 0 ? new Vector2(0, 1) : new Vector2(X / len, Y / len);
+        public Vector2 Normalize(bool allowZero = false) {
+            double len = Length();
+            if (len != 0)
+                return new (X / len, Y / len);
+            return new (0, allowZero? 0.0: 1.0);
         }
 
-        /// Returns a vector with unit length that is orthogonal to this one
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// Returns a vector with unit length that is orthogonal to this one
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector2 GetOrthonormal()
         {
             var len = Length();
             return len == 0 ? new Vector2(0, -1) : new Vector2(Y / len, -X / len);
         }
 
+
+        /// Returns a vector with the same length that is orthogonal to this one.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector2 GetOrthogonal(bool polarity = true) {
+            return polarity? new (-Y, X) : new (Y, -X);
+        }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator !(Vector2 lhs)
         {
             return lhs.X == 0 && lhs.Y == 0;

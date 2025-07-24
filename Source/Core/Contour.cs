@@ -1,72 +1,118 @@
+using SharpMSDF.Core;
+using System;
 using System.Collections.Generic;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
-    /// A single closed contour of a shape.
-    public class Contour : List<EdgeSegment>
+
+    public class Contour
     {
-        /// Computes the bounding box of the contour.
-        public void Bounds(double[] box)
+
+        public List<EdgeHolder> Edges = new List<EdgeHolder>();
+
+        private static double Shoelace(Vector2 a, Vector2 b)
         {
-            foreach (var edge in this) edge.Bounds(box);
+            return (b.X - a.X) * (a.Y + b.Y);
         }
 
-        /// Computes the winding of the contour. Returns 1 if positive, -1 if negative.
+        public void AddEdge(EdgeHolder edge)
+        {
+            Edges.Add(edge);
+        }
+
+        public EdgeHolder AddEdge()
+        {
+            Edges.Add(null!); // Will be assigned later
+            return Edges[^1];
+        }
+
+        private static void BoundPoint(ref double l, ref double b, ref double r, ref double t, Vector2 p)
+        {
+            if (p.X < l) l = p.X;
+            if (p.Y < b) b = p.Y;
+            if (p.X > r) r = p.X;
+            if (p.Y > t) t = p.Y;
+        }
+
+        public void Bound(ref double l, ref double b, ref double r, ref double t)
+        {
+            for (int e  = 0; e < Edges.Count; e++)
+                Edges[e].Segment.Bound(ref l, ref b, ref r, ref t);
+        }
+
+        public void BoundMiters(ref double l, ref double b, ref double r, ref double t, double border, double miterLimit, int polarity)
+        {
+            if (Edges.Count == 0)
+                return;
+
+            Vector2 prevDir = Edges[^1].Segment.Direction(1).Normalize(true);
+
+            for (int e = 0; e < Edges.Count; e++)
+            {
+                Vector2 dir = -Edges[e].Segment.Direction(0).Normalize(true);
+                if (polarity * Vector2.Cross(prevDir, dir) >= 0)
+                {
+                    double miterLength = miterLimit;
+                    double q = 0.5 * (1 - Vector2.Dot(prevDir, dir));
+                    if (q > 0)
+                        miterLength = Math.Min(1 / Math.Sqrt(q), miterLimit);
+                    Vector2 miter = Edges[e].Segment.Point(0) + border * miterLength * (prevDir + dir).Normalize(true);
+                    BoundPoint(ref l, ref b, ref r, ref t, miter);
+                }
+                prevDir = Edges[e].Segment.Direction(1).Normalize(true);
+            }
+        }
+
         public int Winding()
         {
-            if (Count == 0)
+            if (Edges.Count == 0)
                 return 0;
-            double total;
-            switch (Count)
+
+            double total = 0;
+
+            if (Edges.Count == 1)
             {
-                case 1:
-                    total = WindingSingle();
-                    break;
-                case 2:
-                    total = WindingDouble();
-                    break;
-                default:
-                    total = WindingMultiple();
-                    break;
+                Vector2 a = Edges[0].Segment.Point(0);
+                Vector2 b = Edges[0].Segment.Point(1.0 / 3.0);
+                Vector2 c = Edges[0].Segment.Point(2.0 / 3.0);
+                total += Shoelace(a, b);
+                total += Shoelace(b, c);
+                total += Shoelace(c, a);
+            }
+            else if (Edges.Count == 2)
+            {
+                Vector2 a = Edges[0].Segment.Point(0);
+                Vector2 b = Edges[0].Segment.Point(0.5);
+                Vector2 c = Edges[1].Segment.Point(0);
+                Vector2 d = Edges[1].Segment.Point(0.5);
+                total += Shoelace(a, b);
+                total += Shoelace(b, c);
+                total += Shoelace(c, d);
+                total += Shoelace(d, a);
+            }
+            else
+            {
+                Vector2 prev = Edges[^1].Segment.Point(0);
+                for (int e = 0; e < Edges.Count; e++)
+                {
+                    Vector2 cur = Edges[e].Segment.Point(0);
+                    total += Shoelace(prev, cur);
+                    prev = cur;
+                }
             }
 
             return Arithmetic.Sign(total);
         }
 
-        private double WindingMultiple()
+        public void Reverse()
         {
-            var total = 0.0;
-            var prev = this[Count - 1].Point(0);
-            foreach (var edge in this)
+            int count = Edges.Count;
+            for (int i = 0; i < count / 2; ++i)
             {
-                var cur = edge.Point(0);
-                total += Shoelace(prev, cur);
-                prev = cur;
+                (Edges[i], Edges[count - i - 1]) = (Edges[count - i - 1], Edges[i]);
             }
-
-            return total;
-        }
-
-        private double WindingDouble()
-        {
-            Vector2 a = this[0].Point(0),
-                b = this[0].Point(.5),
-                c = this[1].Point(0),
-                d = this[1].Point(.5);
-            return Shoelace(a, b) + Shoelace(b, c) + Shoelace(c, d) + Shoelace(d, a);
-        }
-
-        private double WindingSingle()
-        {
-            Vector2 a = this[0].Point(0),
-                b = this[0].Point(1.0 / 3.0),
-                c = this[0].Point(2.0 / 3.0);
-            return Shoelace(a, b) + Shoelace(b, c) + Shoelace(c, a);
-        }
-
-        private static double Shoelace(Vector2 a, Vector2 b)
-        {
-            return (b.X - a.X) * (a.Y + b.Y);
+            for (int e=0; e < Edges.Count; e++)
+                Edges[e].Segment.Reverse();
         }
     }
 }

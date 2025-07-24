@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
     /// Represents a signed distance and alignment, which together can be compared to uniquely determine the closest edge segment.
     public struct SignedDistance

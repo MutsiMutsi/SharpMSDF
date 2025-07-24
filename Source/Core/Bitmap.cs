@@ -1,7 +1,7 @@
 using System.Drawing;
 using Typography.OpenFont.Tables;
 
-namespace Msdfgen
+namespace SharpMSDF.Core
 {
     public struct FloatRgb
     {
