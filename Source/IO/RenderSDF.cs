@@ -1,6 +1,7 @@
 using System;
+using SharpMSDF.Core;
 
-namespace Msdfgen
+namespace SharpMSDF.IO
 {
     public static class Render
     {

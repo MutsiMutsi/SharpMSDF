@@ -6,8 +6,9 @@ using System.Linq;
 using static System.Formats.Asn1.AsnWriter;
 using NumericsVector2 = System.Numerics.Vector2;
 using static System.Net.Mime.MediaTypeNames;
+using SharpMSDF.Core;
 
-namespace Msdfgen.IO
+namespace SharpMSDF.IO
 {
     public static class ImportFont
     {
@@ -114,11 +115,11 @@ namespace Msdfgen.IO
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(pendingOff.Value);
                             var c2 = ToShapeSpace(pt);
-                            contour.Add(new QuadraticSegment(
-                                EdgeColor.White,
+                            contour.Edges.Add(new QuadraticSegment(
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y),
-                                new Vector2((float)c2.X, (float)c2.Y)
+                                new Vector2((float)c2.X, (float)c2.Y),
+                                EdgeColor.White
                             ));
                             pendingOff = null;
                             currentOn = pt;
@@ -127,7 +128,7 @@ namespace Msdfgen.IO
                         {
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(pt);
-                            contour.Add(new LinearSegment(
+                            contour.Edges.Add(new LinearSegment(
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y)
                             ));
@@ -151,11 +152,11 @@ namespace Msdfgen.IO
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(lastOff);
                             var c2 = ToShapeSpace(implied);
-                            contour.Add(new QuadraticSegment(
-                                EdgeColor.White,
+                            contour.Edges.Add(new QuadraticSegment(
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y),
-                                new Vector2((float)c2.X, (float)c2.Y)
+                                new Vector2((float)c2.X, (float)c2.Y),
+                                EdgeColor.White
                             ));
 
                             currentOn = implied;
@@ -170,24 +171,24 @@ namespace Msdfgen.IO
                     var c0 = ToShapeSpace(currentOn);
                     var c1 = ToShapeSpace(pendingOff.Value);
                     var c2 = ToShapeSpace(firstPt);
-                    contour.Add(new QuadraticSegment(
-                        EdgeColor.White,
+                    contour.Edges.Add(new QuadraticSegment(
                         new Vector2((float)c0.X, (float)c0.Y),
                         new Vector2((float)c1.X, (float)c1.Y),
-                        new Vector2((float)c2.X, (float)c2.Y)
+                        new Vector2((float)c2.X, (float)c2.Y),
+                        EdgeColor.White
                     ));
                 }
                 else
                 {
                     var c0 = ToShapeSpace(currentOn);
                     var c1 = ToShapeSpace(firstPt);
-                    contour.Add(new LinearSegment(
+                    contour.Edges.Add(new LinearSegment(
                         new Vector2((float)c0.X, (float)c0.Y),
                         new Vector2((float)c1.X, (float)c1.Y)
                     ));
                 }
 
-                shape.Add(contour);
+                shape.Contours.Add(contour);
                 start = end + 1;
             }
 

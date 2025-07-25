@@ -46,7 +46,7 @@ namespace SharpMSDF.Core
             if (param < 0)
             {
                 Vector2 dir = Direction(0).Normalize();
-                Vector2 aq = new Vector2(origin.X - Point(0).X, origin.Y - Point(0).Y );
+                Vector2 aq = origin - Point(0);
                 double ts = Vector2.Dot(aq, dir);
                 if (ts < 0)
                 {
@@ -61,7 +61,7 @@ namespace SharpMSDF.Core
             else if (param > 1)
             {
                 Vector2 dir = Direction(1).Normalize();
-                Vector2 bq = new Vector2( origin.X - Point(1).X, origin.Y - Point(1).Y );
+                Vector2 bq = origin - Point(1);
                 double ts = Vector2.Dot(bq, dir);
                 if (ts > 0)
                 {
@@ -99,31 +99,31 @@ namespace SharpMSDF.Core
         public override Vector2 DirectionChange(double t) => new Vector2 { X = 0, Y = 0 };
         public double Length() => (P[1] - P[0]).Length();
 
-        public override SignedDistance SignedDistance(Vector2 origin, out double t)
+        public override SignedDistance SignedDistance(Vector2 origin, out double param)
         {
-            Vector2 aq = new Vector2 (origin.X - P[0].X, origin.Y - P[0].Y);
+            Vector2 aq = origin - P[0];
             Vector2 ab = P[1] - P[0];
-            t = Vector2.Dot(aq, ab) / Vector2.Dot(ab, ab);
-            Vector2 end = (t > .5) ? P[1] : P[0];
-            double endpointDist = new Vector2( origin.X - end.X, origin.Y - end.Y).Length();
-            if (t > 0 && t < 1)
+            param = Vector2.Dot(aq, ab) / Vector2.Dot(ab, ab);
+            Vector2 eq = (param > .5) ? P[1]-origin : P[0]-origin;
+            double endpointDist = eq.Length();
+            if (param > 0 && param < 1)
             {
                 // TODO : sus (GetOrthonormal had false as param)
-                double ortho = Vector2.Dot(ab.GetOrthonormal(), aq);
+                double ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
                 if (Math.Abs(ortho) < endpointDist)
                     return new SignedDistance(ortho, 0);
             }
             double sign = Arithmetic.NonZeroSign(Vector2.Cross(aq, ab));
             return new SignedDistance(sign * endpointDist,
-                Math.Abs(Vector2.Dot(ab.Normalize(), new Vector2 (origin.X - end.X, origin.Y - end.Y).Normalize())));
+                Math.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
         }
 
         public override int ScanlineIntersections(double[] x, int[] dy, double y)
         {
             if ((y >= P[0].Y && y < P[1].Y) || (y >= P[1].Y && y < P[0].Y))
             {
-                double t = (y - P[0].Y) / (P[1].Y - P[0].Y);
-                x[0] = Arithmetic.Mix(P[0].X, P[1].X, t);
+                double param = (y - P[0].Y) / (P[1].Y - P[0].Y);
+                x[0] = Arithmetic.Mix(P[0].X, P[1].X, param);
                 dy[0] = Arithmetic.Sign(P[1].Y - P[0].Y);
                 return 1;
             }
@@ -205,22 +205,22 @@ namespace SharpMSDF.Core
             Vector2 ab = P[1] - P[0];
             Vector2 br = (P[2] - P[1]) - ab;
 
-            // cubic coefficients for |Q(t)|² derivative = 0
+            // cubic coefficients for |Q(param)|² derivative = 0
             double a = Vector2.Dot(br, br);
             double b = 3 * Vector2.Dot(ab, br);
             double c = 2 * Vector2.Dot(ab, ab) + Vector2.Dot(qa, br);
             double d = Vector2.Dot(qa, ab);
 
-            // solve for t in [0,1]
+            // solve for param in [0,1]
             double[] t = new double[3];
             int solutions = EquationSolver.SolveCubic(t, a, b, c, d);
 
-            // start by assuming the closest is at t=0 (Point A)
+            // start by assuming the closest is at param=0 (Point A)
             Vector2 epDir = Direction(0);
             double minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length();
             param = -Vector2.Dot(qa, epDir) / Vector2.Dot(epDir, epDir);
 
-            // check endpoint B (t=1)
+            // check endpoint B (param=1)
             epDir = Direction(1);
             double distB = (new Vector2 (P[2].X - origin.X, P[2].Y - origin.Y)).Length();
             if (distB < Math.Abs(minDistance))
@@ -235,7 +235,7 @@ namespace SharpMSDF.Core
             {
                 if (t[i] > 0 && t[i] < 1)
                 {
-                    // Q(t) = qa + 2t·ab + t²·br
+                    // Q(param) = qa + 2t·ab + param²·br
                     Vector2 qe = new Vector2
                     (
                         qa.X + 2 * t[i] * ab.X + t[i] * t[i] * br.X,
@@ -250,7 +250,7 @@ namespace SharpMSDF.Core
                 }
             }
 
-            // choose return form depending on where the closest t lies
+            // choose return form depending on where the closest param lies
             if (param >= 0 && param <= 1)
             {
                 return new SignedDistance(minDistance, 0);

@@ -6,13 +6,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using static SharpMSDF.Core.Generate;
 
 namespace SharpMSDF.Core
 {
     internal static class Rasterization
     {
-        /// Rasterizes the shape into a monochrome bitmap.
+        /// Rasterizes the Shape into a monochrome bitmap.
         public static void Rasterize(BitmapRef<float> output, in Shape shape, in Projection projection, FillRule fillRule = FillRule.FILL_NONZERO)
         {
             Scanline scanline = new();
@@ -24,7 +23,7 @@ namespace SharpMSDF.Core
                     output[x, row] = scanline.Filled(projection.UnprojectX(x + .5), fillRule) ? 1.0f: 0.0f;
             }
         }
-        /// Fixes the sign of the input signed distance field, so that it matches the shape's rasterized fill.
+        /// Fixes the sign of the input signed distance field, so that it matches the Shape's rasterized fill.
         public static void DistanceSignCorrection(in BitmapRef<float> sdf, in Shape shape, in Projection projection, FillRule fillRule = FillRule.FILL_NONZERO)
         {
             Scanline scanline = new();
@@ -86,7 +85,7 @@ namespace SharpMSDF.Core
                 }
             }
 
-            // This step is necessary to avoid artifacts when whole shape is inverted
+            // This step is necessary to avoid artifacts when whole Shape is inverted
             if (ambiguous)
             {
                 for (int y = 0; y < h; ++y)

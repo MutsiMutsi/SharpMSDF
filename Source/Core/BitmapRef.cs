@@ -8,12 +8,18 @@ namespace SharpMSDF.Core
         public int Width, Height;
         public int N;
 
+        public BitmapRef(T* pixels, int width, int height, int n = 1)
+        {
+            Pixels = pixels;
+            Width = width;
+            Height = height;
+            N = n;
+        }
         public BitmapRef(T[] pixels, int width, int height, int n = 1)
         {
             fixed (T* ptr = pixels)
-            {
                 Pixels = ptr;
-            }
+            
             Width = width;
             Height = height;
             N = n;
@@ -39,6 +45,13 @@ public unsafe readonly struct BitmapConstRef<T>
     public readonly int Width, Height;
     public readonly int N;
 
+    public BitmapConstRef(T* pixels, int width, int height, int n = 1)
+    {
+        Pixels = pixels;
+        Width = width;
+        Height = height;
+        N = n;
+    }
     public BitmapConstRef(T[] pixels, int width, int height, int n = 1)
     {
         fixed (T* ptr = pixels)

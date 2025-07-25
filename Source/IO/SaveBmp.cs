@@ -1,124 +1,94 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
+using SharpMSDF.Core;
 
-namespace Msdfgen
+namespace SharpMSDF.IO
 {
     public static class Bmp
     {
-        public static void SaveBmp(Bitmap<float> bitmap, string filename)
+        static void WriteBmpHeader(BinaryWriter writer, int width, int height, out int paddedWidth)
         {
-            using (var writer = new Writer(filename))
-            {
-                writer.WriteContent(bitmap);
-            }
+            paddedWidth = (3 * width + 3) & ~3;
+            uint bitmapStart = 54;
+            uint bitmapSize = (uint)(paddedWidth * height);
+            uint fileSize = bitmapStart + bitmapSize;
+
+            writer.Write((ushort)0x4D42);      // 'BM' signature
+            writer.Write(fileSize);            // file size
+            writer.Write((ushort)0);           // reserved 1
+            writer.Write((ushort)0);           // reserved 2
+            writer.Write(bitmapStart);         // pixel data offset
+
+            writer.Write(40u);                 // DIB header size
+            writer.Write(width);               // image width
+            writer.Write(height);              // image height
+            writer.Write((ushort)1);           // color planes
+            writer.Write((ushort)24);          // bits per pixel
+            writer.Write(0u);                  // compression
+            writer.Write(bitmapSize);          // image size
+            writer.Write(2835u);               // horizontal resolution (72 DPI)
+            writer.Write(2835u);               // vertical resolution (72 DPI)
+            writer.Write(0u);                  // number of colors in palette
+            writer.Write(0u);                  // important colors
         }
 
-        public static void SaveBmp(Bitmap<FloatRgb> bitmap, string filename)
+        public static bool SaveBmp(BitmapRef<byte> bitmap, string filename)
         {
-            using (var writer = new Writer(filename))
+            using var file = File.Open(filename, FileMode.Create);
+            using var writer = new BinaryWriter(file);
+
+            WriteBmpHeader(writer, bitmap.Width, bitmap.Height, out int paddedWidth);
+
+            int padLength = paddedWidth - 3 * bitmap.Width;
+            byte[] padding = new byte[4];
+
+            for (int y = 0; y < bitmap.Height; y++)
             {
-                writer.WriteContent(bitmap);
+                for (int x = 0; x < bitmap.Width; x++)
+                {
+                    byte px = bitmap[x, y];
+                    writer.Write(px); writer.Write(px); writer.Write(px);
+                }
+                writer.Write(padding, 0, padLength);
             }
+
+            return true;
+        }
+        public static bool SaveBmp(BitmapRef<float> bitmap, string filename)
+        {
+            using var file = File.Open(filename, FileMode.Create);
+            using var writer = new BinaryWriter(file);
+
+            WriteBmpHeader(writer, bitmap.Width, bitmap.Height, out int paddedWidth);
+
+            int padLength = paddedWidth - 3 * bitmap.Width;
+            byte[] padding = new byte[4];
+
+            for (int y = 0; y < bitmap.Height; y++)
+            {
+                for (int x = 0; x < bitmap.Width; x++)
+                {
+                    byte px = PixelFloatToByte(bitmap[x, y]);
+                    writer.Write(px); writer.Write(px); writer.Write(px);
+                }
+                writer.Write(padding, 0, padLength);
+            }
+
+            return true;
         }
 
-        private class Writer : IDisposable
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static byte PixelFloatToByte(float x)
         {
-            private readonly FileStream _file;
-            private readonly BinaryWriter _writer;
+            float clamped = Arithmetic.Clamp(x); // clamps between 0.0 and 1.0
+            return (byte)~(int)(255.5f - 255f * clamped);
+        }
 
-            internal Writer(string name)
-            {
-                _writer = new BinaryWriter(_file = new FileStream(name, FileMode.OpenOrCreate));
-            }
-
-            public void Dispose()
-            {
-                _writer?.Dispose();
-                _file?.Dispose();
-            }
-
-            private int WriteHeader(int width, int height)
-            {
-                const uint bitmapStart = 54;
-                var paddedWidth = (3 * width + 3) & ~3;
-                var bitmapSize = (uint) (paddedWidth * height);
-                var fileSize = bitmapStart + bitmapSize;
-                WriteHeaderSection1(fileSize, bitmapStart);
-                WriteHeaderSection2BeforeSize(width, height);
-                WriteHeaderSection2Rest(bitmapSize);
-                return paddedWidth;
-            }
-
-            private void WriteHeaderSection2Rest(uint bitmapSize)
-            {
-                _writer.Write(bitmapSize);
-                _writer.Write((uint) 2835);
-                _writer.Write((uint) 2835);
-                _writer.Write((uint) 0);
-                _writer.Write((uint) 0);
-            }
-
-            private void WriteHeaderSection2BeforeSize(int width, int height)
-            {
-                _writer.Write((uint) 40);
-                _writer.Write(width);
-                _writer.Write(height);
-                _writer.Write((ushort) 1);
-                _writer.Write((ushort) 24);
-                _writer.Write((uint) 0);
-            }
-
-            private void WriteHeaderSection1(uint fileSize, uint bitmapStart)
-            {
-                _writer.Write((ushort) 0x4d42u);
-                _writer.Write(fileSize);
-                _writer.Write((ushort) 0);
-                _writer.Write((ushort) 0);
-                _writer.Write(bitmapStart);
-            }
-
-            internal void WriteContent(Bitmap<float> bitmap)
-            {
-                var paddedWidth = WriteHeader(bitmap.Width, bitmap.Height);
-
-                var padding = new byte[paddedWidth - 3 * bitmap.Width];
-
-                for (var y = 0; y < bitmap.Height; ++y)
-                {
-                    for (var x = 0; x < bitmap.Width; ++x)
-                    {
-                        var px = (byte) Math.Clamp(bitmap[x, y] * 0x100, 0, 0xff);
-                        _writer.Write(px);
-                        _writer.Write(px);
-                        _writer.Write(px);
-                    }
-
-                    _writer.Write(padding);
-                }
-            }
-
-            internal void WriteContent(Bitmap<FloatRgb> bitmap)
-            {
-                var paddedWidth = WriteHeader(bitmap.Width, bitmap.Height);
-
-                var padding = new byte[paddedWidth - 3 * bitmap.Width];
-
-                for (var y = 0; y < bitmap.Height; ++y)
-                {
-                    for (var x = 0; x < bitmap.Width; ++x)
-                    {
-                        var bgr = new[]
-                        {
-                            (byte) Math.Clamp(bitmap[x, y].B * 0x100, 0, 0xff),
-                            (byte) Math.Clamp(bitmap[x, y].G * 0x100, 0, 0xff),
-                            (byte) Math.Clamp(bitmap[x, y].R * 0x100, 0, 0xff)
-                        };
-                        _writer.Write(bgr);
-                    }
-
-                    _writer.Write(padding);
-                }
-            }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static float PixelByteToFloat(byte x)
+        {
+            return x * (1f / 255f);
         }
     }
 }

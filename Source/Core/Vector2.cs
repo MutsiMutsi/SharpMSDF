@@ -63,16 +63,18 @@ namespace SharpMSDF.Core
         }
 
     /// Returns a vector with unit length that is orthogonal to this one
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector2 GetOrthonormal()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector2 GetOrthonormal(bool polarity = true, bool allowZero = false) 
         {
-            var len = Length();
-            return len == 0 ? new Vector2(0, -1) : new Vector2(Y / len, -X / len);
+            double len = Length();
+            if (len != 0)
+                return polarity? new (-Y/len, X/len) : new (Y/len, -X/len);
+            return polarity? new (0, allowZero ? 0 : 1) : new (0, -(allowZero? 0: 1));
         }
 
 
-        /// Returns a vector with the same length that is orthogonal to this one.
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// Returns a vector with the same length that is orthogonal to this one.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector2 GetOrthogonal(bool polarity = true) {
             return polarity? new (-Y, X) : new (Y, -X);
         }

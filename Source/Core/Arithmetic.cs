@@ -5,6 +5,17 @@ namespace SharpMSDF.Core
 {
     public static class Arithmetic
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Clamp(float n)
+        {
+            return n >= 0.0f && n <= 1.0f ? n : (n > 0f)? 1.0f: 0.0f;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Clamp(double n)
+        {
+            return n >= 0.0 && n <= 1.0 ? n : (n > 0)? 1.0: 0.0;
+        }
+
         /// Returns the middle out of three values
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Median(float a, float b, float c)

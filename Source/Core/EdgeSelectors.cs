@@ -1,6 +1,30 @@
 ﻿
+using static SharpMSDF.Core.TrueDistanceSelector;
+
 namespace SharpMSDF.Core
 {
+    public interface IDistanceSelector<TDistance>
+    {
+        /// <summary>
+        /// Reset any internal state for a new query point p.
+        /// </summary>
+        void AddEdge(ref EdgeCache cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge);
+
+        /// <summary>
+        /// Reset any internal state for a new query point p.
+        /// </summary>
+        void Reset(Vector2 p);
+
+        /// <summary>
+        /// Merge with another selector (for parallel reduction).
+        /// </summary>
+        void Merge(IDistanceSelector<TDistance> other);
+
+        /// <summary>
+        /// Return the final distance value of type TDistance.
+        /// </summary>
+        TDistance Distance();
+    }
 
     public struct MultiDistance
     {
@@ -12,15 +36,23 @@ namespace SharpMSDF.Core
         public double R, G, B, A;
     }
 
-    public class TrueDistanceSelector
+    public struct EdgeCache
     {
-        public struct EdgeCache
+        public Vector2 Point { get; set; }
+        public double AbsDistance { get; set; }
+        public double ADomainDistance, BDomainDistance;
+        public double APerpDistance, BPerpDistance;
+        public EdgeCache()
         {
-            public Vector2 Point;
-            public double AbsDistance;
-            public EdgeCache() { Point = default; AbsDistance = 0; }
+            Point = default;
+            AbsDistance = 0;
+            ADomainDistance = BDomainDistance = 0;
+            APerpDistance = BPerpDistance = 0;
         }
+    }
 
+    public class TrueDistanceSelector : IDistanceSelector<double>
+    {
         private Vector2 _p;
         private SignedDistance _minDistance = new SignedDistance();
 
@@ -46,33 +78,24 @@ namespace SharpMSDF.Core
             }
         }
 
-        public void Merge(TrueDistanceSelector other)
+        public void Merge(IDistanceSelector<double> other)
         {
-            if (other._minDistance < _minDistance)
-                _minDistance = other._minDistance;
+            if (other is TrueDistanceSelector otherT)
+            {
+                if (otherT._minDistance < _minDistance)
+                    _minDistance = otherT._minDistance;
+            }
+            else throw new("Wrong type to merge");
         }
 
-        public double Distance => _minDistance.Distance;
+        
 
-        // --- helper Arithmetic.NonZeroSign(double) must be implemented elsewhere ---
+        public double Distance() => _minDistance.Distance;
+
     }
 
     public class PerpendicularDistanceSelectorBase
     {
-        public struct EdgeCache
-        {
-            public Vector2 Point;
-            public double AbsDistance;
-            public double ADomainDistance, BDomainDistance;
-            public double APerpDistance, BPerpDistance;
-            public EdgeCache()
-            {
-                Point = default;
-                AbsDistance = 0;
-                ADomainDistance = BDomainDistance = 0;
-                APerpDistance = BPerpDistance = 0;
-            }
-        }
 
         internal SignedDistance _minTrueDistance = new SignedDistance();
         internal double _minNegPerp, _minPosPerp;
@@ -178,7 +201,7 @@ namespace SharpMSDF.Core
         // --- helper: Vector2.Cross(Vector2,Vector2), Arithmetic.NonZeroSign(double) must be provided elsewhere ---
     }
 
-    public class PerpendicularDistanceSelector : PerpendicularDistanceSelectorBase
+    public class PerpendicularDistanceSelector : PerpendicularDistanceSelectorBase, IDistanceSelector<double>
     {
         private Vector2 _p;
         public double DistanceType;  // in C# you can drop this: use double directly
@@ -188,6 +211,15 @@ namespace SharpMSDF.Core
             double delta = DISTANCE_DELTA_FACTOR * (p - _p).Length();
             base.Reset(delta);
             _p = p;
+        }
+
+        public void Merge(IDistanceSelector<double> other)
+        {
+            if (other is PerpendicularDistanceSelector otherP)
+            {
+                Merge(otherP);
+            }
+            else throw new("Wrong type to merge");
         }
 
         public void AddEdge(ref EdgeCache cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge)
@@ -232,12 +264,12 @@ namespace SharpMSDF.Core
         public double Distance() => ComputeDistance(_p);
     }
 
-    public class MultiDistanceSelector
+    public class MultiDistanceSelector : IDistanceSelector<MultiDistance>
     {
-        private Vector2 _p;
-        private PerpendicularDistanceSelectorBase _r = new PerpendicularDistanceSelectorBase();
-        private PerpendicularDistanceSelectorBase _g = new PerpendicularDistanceSelectorBase();
-        private PerpendicularDistanceSelectorBase _b = new PerpendicularDistanceSelectorBase();
+        protected Vector2 _p;
+        protected PerpendicularDistanceSelectorBase _r = new PerpendicularDistanceSelectorBase();
+        protected PerpendicularDistanceSelectorBase _g = new PerpendicularDistanceSelectorBase();
+        protected PerpendicularDistanceSelectorBase _b = new PerpendicularDistanceSelectorBase();
 
         public void Reset(Vector2 p)
         {
@@ -248,7 +280,7 @@ namespace SharpMSDF.Core
             _p = p;
         }
 
-        public void AddEdge(ref PerpendicularDistanceSelectorBase.EdgeCache cache, EdgeSegment prev, EdgeSegment edge, EdgeSegment next)
+        public void AddEdge(ref EdgeCache cache, EdgeSegment prev, EdgeSegment edge, EdgeSegment next)
         {
             EdgeColor color = edge.Color;
             bool doR = (color & EdgeColor.Red) != 0 && _r.IsEdgeRelevant(cache, edge, _p);
@@ -301,11 +333,16 @@ namespace SharpMSDF.Core
             }
         }
 
-        public void Merge(MultiDistanceSelector other)
+        public void Merge(IDistanceSelector<MultiDistance> other)
         {
-            _r.Merge(other._r);
-            _g.Merge(other._g);
-            _b.Merge(other._b);
+            if (other is MultiDistanceSelector otherM)
+            {
+                _r.Merge(otherM._r);
+                _g.Merge(otherM._g);
+                _b.Merge(otherM._b);
+
+            }
+            else throw new("Wrong type to merge");
         }
 
         public MultiDistance Distance()
@@ -327,7 +364,7 @@ namespace SharpMSDF.Core
         }
     }
 
-    public class MultiAndTrueDistanceSelector : MultiDistanceSelector
+    public class MultiAndTrueDistanceSelector : MultiDistanceSelector, IDistanceSelector<MultiAndTrueDistance>
     {
         public MultiAndTrueDistance Distance()
         {
@@ -335,5 +372,18 @@ namespace SharpMSDF.Core
             var td = base.TrueDistance();
             return new MultiAndTrueDistance { R = md.R, G = md.G, B = md.B, A = td.Distance };
         }
+
+        public void Merge(IDistanceSelector<MultiAndTrueDistance> other)
+        {
+            if (other is MultiAndTrueDistanceSelector otherM)
+            {
+                _r.Merge(otherM._r);
+                _g.Merge(otherM._g);
+                _b.Merge(otherM._b);
+
+            }
+            else throw new("Wrong type to merge");
+        }
+
     }
 }

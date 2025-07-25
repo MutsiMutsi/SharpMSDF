@@ -18,16 +18,18 @@ namespace SharpMSDF.Core
 
     public class Bitmap<T> where T : struct
     {
-        private readonly T[,] _content;
+        public readonly T[] Pixels;
+        public int N;
 
-        public Bitmap(int width, int height)
+        public Bitmap(int width, int height, int channels=1)
         {
             Width = width;
             Height = height;
-            _content = new T[width, height];
+            N = channels;
+            Pixels = new T[channels*width*height];
         }
 
-        public ref T this[int x, int y] => ref _content[x, y];
+        public ref T this[int x, int y] => ref Pixels[N * (Width * y + x)];
 
         public int Width { get; }
 
