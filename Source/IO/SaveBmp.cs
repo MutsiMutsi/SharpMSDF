@@ -33,44 +33,74 @@ namespace SharpMSDF.IO
             writer.Write(0u);                  // important colors
         }
 
-        public static bool SaveBmp(BitmapRef<byte> bitmap, string filename)
+        public static bool SaveBmp(BitmapConstRef<byte> bitmap, string filename)
         {
             using var file = File.Open(filename, FileMode.Create);
             using var writer = new BinaryWriter(file);
 
-            WriteBmpHeader(writer, bitmap.Width, bitmap.Height, out int paddedWidth);
+            WriteBmpHeader(writer, bitmap.SubWidth, bitmap.SubHeight, out int paddedWidth);
 
-            int padLength = paddedWidth - 3 * bitmap.Width;
+            int padLength = paddedWidth - 3 * bitmap.SubWidth;
             byte[] padding = new byte[4];
 
-            for (int y = 0; y < bitmap.Height; y++)
+            byte r, g, b;
+            for (int y = 0; y < bitmap.SubHeight; y++)
             {
-                for (int x = 0; x < bitmap.Width; x++)
+                for (int x = 0; x < bitmap.SubWidth; x++)
                 {
-                    byte px = bitmap[x, y];
-                    writer.Write(px); writer.Write(px); writer.Write(px);
+                    switch (bitmap.N)
+                    {
+                        case 1:
+                            byte px = bitmap[x, y, 0];
+                            writer.Write(px); writer.Write(px); writer.Write(px);
+                            break;
+                        case 3:
+                            r = bitmap[x, y, 0];
+                            g = bitmap[x, y, 1];
+                            b = bitmap[x, y, 2];
+                            writer.Write(r); writer.Write(g); writer.Write(b);
+                            break;
+                        case 4:
+                            // Alpha is not supported
+                            return false;
+                    }
                 }
                 writer.Write(padding, 0, padLength);
             }
 
             return true;
         }
-        public static bool SaveBmp(BitmapRef<float> bitmap, string filename)
+        public static bool SaveBmp(BitmapConstRef<float> bitmap, string filename)
         {
             using var file = File.Open(filename, FileMode.Create);
             using var writer = new BinaryWriter(file);
 
-            WriteBmpHeader(writer, bitmap.Width, bitmap.Height, out int paddedWidth);
+            WriteBmpHeader(writer, bitmap.SubWidth, bitmap.SubHeight, out int paddedWidth);
 
-            int padLength = paddedWidth - 3 * bitmap.Width;
+            int padLength = paddedWidth - 3 * bitmap.SubWidth;
             byte[] padding = new byte[4];
 
-            for (int y = 0; y < bitmap.Height; y++)
+            byte r, g, b;
+            for (int y = 0; y < bitmap.SubHeight; y++)
             {
-                for (int x = 0; x < bitmap.Width; x++)
+                for (int x = 0; x < bitmap.SubWidth; x++)
                 {
-                    byte px = PixelFloatToByte(bitmap[x, y]);
-                    writer.Write(px); writer.Write(px); writer.Write(px);
+                    switch (bitmap.N)
+                    {
+                        case 1:
+                            byte px = PixelFloatToByte(bitmap[x, y, 0]);
+                            writer.Write(px); writer.Write(px); writer.Write(px);
+                            break;
+                        case 3:
+                            r = PixelFloatToByte(bitmap[x, y, 0]);
+                            g = PixelFloatToByte(bitmap[x, y, 1]);
+                            b = PixelFloatToByte(bitmap[x, y, 2]);
+                            writer.Write(r); writer.Write(g); writer.Write(b);
+                            break;
+                        case 4:
+                            // Alpha is not supported
+                            return false;
+                    }
                 }
                 writer.Write(padding, 0, padLength);
             }

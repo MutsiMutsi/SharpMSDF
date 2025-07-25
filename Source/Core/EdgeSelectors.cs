@@ -8,7 +8,7 @@ namespace SharpMSDF.Core
         /// <summary>
         /// Reset any internal state for a new query point p.
         /// </summary>
-        void AddEdge(ref EdgeCache cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge);
+        unsafe void AddEdge(EdgeCache* cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge);
 
         /// <summary>
         /// Reset any internal state for a new query point p.
@@ -65,16 +65,16 @@ namespace SharpMSDF.Core
             _p = p;
         }
 
-        public void AddEdge(ref EdgeCache cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge)
+        public unsafe void AddEdge(EdgeCache* cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge)
         {
-            double delta = DISTANCE_DELTA_FACTOR * (_p - cache.Point).Length();
-            if (cache.AbsDistance - delta <= Math.Abs(_minDistance.Distance))
+            double delta = DISTANCE_DELTA_FACTOR * (_p - (*cache).Point).Length();
+            if ((*cache).AbsDistance - delta <= Math.Abs(_minDistance.Distance))
             {
                 var distance = edge.SignedDistance(_p, out _);
                 if (distance < _minDistance)
                     _minDistance = distance;
-                cache.Point = _p;
-                cache.AbsDistance = Math.Abs(distance.Distance);
+                (*cache).Point = _p;
+                (*cache).AbsDistance = Math.Abs(distance.Distance);
             }
         }
 
@@ -222,15 +222,15 @@ namespace SharpMSDF.Core
             else throw new("Wrong type to merge");
         }
 
-        public void AddEdge(ref EdgeCache cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge)
+        public unsafe void AddEdge(EdgeCache* cache, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge)
         {
-            if (IsEdgeRelevant(cache, edge, _p))
+            if (IsEdgeRelevant((*cache), edge, _p))
             {
                 double param;
                 var dist = edge.SignedDistance(_p, out param);
                 AddEdgeTrueDistance(edge, dist, param);
-                cache.Point = _p;
-                cache.AbsDistance = Math.Abs(dist.Distance);
+                (*cache).Point = _p;
+                (*cache).AbsDistance = Math.Abs(dist.Distance);
 
                 Vector2 ap = _p - edge.Point(0);
                 Vector2 bp = _p - edge.Point(1);
@@ -247,17 +247,17 @@ namespace SharpMSDF.Core
                     double pd = dist.Distance;
                     if (GetPerpendicularDistance(ref pd, ap, -aDir))
                         AddEdgePerpendicularDistance(pd = -pd);
-                    cache.APerpDistance = pd;
+                    (*cache).APerpDistance = pd;
                 }
                 if (bdd > 0)
                 {
                     double pd = dist.Distance;
                     if (GetPerpendicularDistance(ref pd, bp, bDir))
                         AddEdgePerpendicularDistance(pd);
-                    cache.BPerpDistance = pd;
+                    (*cache).BPerpDistance = pd;
                 }
-                cache.ADomainDistance = add;
-                cache.BDomainDistance = bdd;
+                (*cache).ADomainDistance = add;
+                (*cache).BDomainDistance = bdd;
             }
         }
 
@@ -280,12 +280,12 @@ namespace SharpMSDF.Core
             _p = p;
         }
 
-        public void AddEdge(ref EdgeCache cache, EdgeSegment prev, EdgeSegment edge, EdgeSegment next)
+        public unsafe void AddEdge(EdgeCache* cache, EdgeSegment prev, EdgeSegment edge, EdgeSegment next)
         {
             EdgeColor color = edge.Color;
-            bool doR = (color & EdgeColor.Red) != 0 && _r.IsEdgeRelevant(cache, edge, _p);
-            bool doG = (color & EdgeColor.Green) != 0 && _g.IsEdgeRelevant(cache, edge, _p);
-            bool doB = (color & EdgeColor.Blue) != 0 && _b.IsEdgeRelevant(cache, edge, _p);
+            bool doR = (color & EdgeColor.Red) != 0 && _r.IsEdgeRelevant((*cache), edge, _p);
+            bool doG = (color & EdgeColor.Green) != 0 && _g.IsEdgeRelevant((*cache), edge, _p);
+            bool doB = (color & EdgeColor.Blue) != 0 && _b.IsEdgeRelevant((*cache), edge, _p);
             if (doR || doG || doB)
             {
                 double param;
@@ -293,8 +293,8 @@ namespace SharpMSDF.Core
                 if (doR) _r.AddEdgeTrueDistance(edge, dist, param);
                 if (doG) _g.AddEdgeTrueDistance(edge, dist, param);
                 if (doB) _b.AddEdgeTrueDistance(edge, dist, param);
-                cache.Point = _p;
-                cache.AbsDistance = Math.Abs(dist.Distance);
+                (*cache).Point = _p;
+                (*cache).AbsDistance = Math.Abs(dist.Distance);
 
                 Vector2 ap = _p - edge.Point(0);
                 Vector2 bp = _p - edge.Point(1);
@@ -315,7 +315,7 @@ namespace SharpMSDF.Core
                         if (doG) _g.AddEdgePerpendicularDistance(pd);
                         if (doB) _b.AddEdgePerpendicularDistance(pd);
                     }
-                    cache.APerpDistance = pd;
+                    (*cache).APerpDistance = pd;
                 }
                 if (bdd > 0)
                 {
@@ -326,10 +326,10 @@ namespace SharpMSDF.Core
                         if (doG) _g.AddEdgePerpendicularDistance(pd);
                         if (doB) _b.AddEdgePerpendicularDistance(pd);
                     }
-                    cache.BPerpDistance = pd;
+                    (*cache).BPerpDistance = pd;
                 }
-                cache.ADomainDistance = add;
-                cache.BDomainDistance = bdd;
+                (*cache).ADomainDistance = add;
+                (*cache).BDomainDistance = bdd;
             }
         }
 

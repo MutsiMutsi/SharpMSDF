@@ -1,24 +1,26 @@
 using System.Drawing;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using Typography.OpenFont.Tables;
 
 namespace SharpMSDF.Core
 {
-    public struct FloatRgb
-    {
-        public float R, G, B;
-        public static implicit operator FloatRgb((float r, float g, float b) col)
-        {
-            return new FloatRgb() { R = col.r, G = col.g, B = col.b };
-        }
-        public static implicit operator FloatRgb(float col)
-        {
-            return new FloatRgb() { R = col, G = col, B = col };
-        }
-    }
+    //public struct FloatRgb
+    //{
+    //    public float R, G, B;
+    //    public static implicit operator FloatRgb((float r, float g, float b) col)
+    //    {
+    //        return new FloatRgb() { R = col.r, G = col.g, B = col.b };
+    //    }
+    //    public static implicit operator FloatRgb(float col)
+    //    {
+    //        return new FloatRgb() { R = col, G = col, B = col };
+    //    }
+    //}
 
     public class Bitmap<T> where T : struct
     {
-        public readonly T[] Pixels;
+        public T[] Pixels;
         public int N;
 
         public Bitmap(int width, int height, int channels=1)

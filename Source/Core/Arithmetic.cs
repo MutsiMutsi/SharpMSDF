@@ -55,11 +55,10 @@ namespace SharpMSDF.Core
             return (0 < n ? 1 : 0) - (n < 0 ? 1 : 0);
         }
 
-        /// Returns 1 for non-negative values and -1 for negative values.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int NonZeroSign(double n)
         {
-            return n >= 0 ? 1 : -1;
+            return n > 0 ? 1 : -1;
         }
     }
 }

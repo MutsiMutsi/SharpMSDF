@@ -58,7 +58,7 @@ namespace SharpMSDF.IO
             }
 
             int advUnits = typeface.GetAdvanceWidthFromGlyphIndex(glyphIndex);
-            advance = advUnits / 64.0;
+            advance = advUnits * scale;
 
             const int padding = 2;      // pixels
 

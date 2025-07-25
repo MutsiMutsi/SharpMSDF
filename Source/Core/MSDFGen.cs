@@ -12,6 +12,7 @@ using BitmapRefMulti = SharpMSDF.Core.BitmapRef<float>;
 using BitmapRefMultiAndTrue = SharpMSDF.Core.BitmapRef<float>;
 using Typography.OpenFont;
 using Typography.OpenFont.Tables;
+using System.Diagnostics;
 
 
 namespace SharpMSDF.Core
@@ -23,38 +24,38 @@ namespace SharpMSDF.Core
             public DistanceMapping Mapping;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public abstract void Convert(float* pixels, TDistance distance);
+            public abstract void Convert(float* pixels, TDistance distance, int s = 0, int s2 = 0);
         }
 
         public unsafe class DistancePixelConversionSingle : DistancePixelConversion<double>
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override void Convert(float* pixels, double distance)
+            public override void Convert(float* pixels, double distance, int s=0, int s2=0)
             {
-                pixels[0] = (float)Mapping[distance];
+                *pixels = (float)Mapping[distance];
             }
         }
 
         public unsafe class DistancePixelConversionMulti : DistancePixelConversion<MultiDistance>
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override void Convert(float* pixels, MultiDistance distance)
+            public override void Convert(float* pixels, MultiDistance distance, int s=0, int s2=0)
             {
-                pixels[0] = (float)Mapping[distance.R];
-                pixels[1] = (float)Mapping[distance.G];
-                pixels[2] = (float)Mapping[distance.B];
+                *pixels = (float)Mapping[distance.R];
+                *(pixels+1) = (float)Mapping[distance.G];
+                *(pixels+2) = (float)Mapping[distance.B];
             }
         }
 
         public unsafe class DistancePixelConversionMultiAndTrue : DistancePixelConversion<MultiAndTrueDistance>
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override void Convert(float* pixels, MultiAndTrueDistance distance)
+            public override void Convert(float* pixels, MultiAndTrueDistance distance, int s=0, int s2=0)
             {
-                pixels[0] = (float)Mapping[distance.R];
-                pixels[1] = (float)Mapping[distance.G];
-                pixels[2] = (float)Mapping[distance.B];
-                pixels[3] = (float)Mapping[distance.A];
+                *pixels = (float)Mapping[distance.R];
+                *(pixels+1) = (float)Mapping[distance.G];
+                *(pixels+2) = (float)Mapping[distance.B];
+                *(pixels+3) = (float)Mapping[distance.A];
             }
         }
 
@@ -72,22 +73,29 @@ namespace SharpMSDF.Core
             // 3. Parallel loop over rows
             bool rightToLeft = false;
 
-            Parallel.For(0, output.Height, y =>
+            fixed (float* arrayFixed = output.Pixels)
             {
-                int row = shape.InverseYAxis ? output.Height - y - 1 : y;
-                for (int col = 0; col < output.Width; col++)
+                // used to trick compiler into thinking this is not fixed when dealing with lambda expression
+                float* pixels = arrayFixed; 
+
+                for (int y = 0; y < output.SubHeight; y++)
+                //Parallel.For(0, output.SubHeight, y =>
                 {
-                    int x = rightToLeft ? output.Width - col - 1 : col;
-                    // unproject into Shape‐space
-                    var p = transformation.Projection.UnprojectVector(new Vector2(x + .5f, y + .5f));
-                    // get the signed‐distance
-                    TDistance dist = distanceFinder.Distance(p);
-                    // write into the pixel buffer
-                    float* pixel = output.Pixels + output.N * (output.Width * row + x);
-                    converter.Convert(pixel, dist); 
+                    int row = shape.InverseYAxis ? output.SubHeight - y - 1 : y;
+                    for (int col = 0; col < output.SubWidth; col++)
+                    {
+                        int x = rightToLeft ? output.SubWidth - col - 1 : col;
+                        // unproject into Shape‐space
+                        var p = transformation.Projection.UnprojectVector(new Vector2(x + .5f, y + .5f));
+                        // get the signed‐distance
+                        TDistance dist = distanceFinder.Distance(p);
+                        // write into the pixel buffer
+                        float* pixel = pixels + output.GetIndex(x, row);
+                        converter.Convert(pixel, dist, x, row);
+                    }
+                    rightToLeft = !rightToLeft; // flip for “staggered” ordering
                 }
-                rightToLeft = !rightToLeft; // flip for “staggered” ordering
-            });
+            }
         }
 
 

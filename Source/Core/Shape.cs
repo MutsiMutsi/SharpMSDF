@@ -101,7 +101,7 @@ namespace SharpMSDF.Core
                         EdgeHolder edge = contour.Edges[i];
                         Vector2 prevDir = prevEdge.Segment.Direction(1).Normalize();
                         Vector2 curDir = edge.Segment.Direction(0).Normalize();
-                        if (Vector2.Dot(prevDir, curDir) < MSDFGEN_CORNER_DOT_EPSILON)
+                        if (Vector2.Dot(prevDir, curDir) < MSDFGEN_CORNER_DOT_EPSILON-1)
                         {
                             double factor = 1.11111111111111111 * Math.Sqrt(1 - Math.Pow(MSDFGEN_CORNER_DOT_EPSILON - 1, 2)) / (MSDFGEN_CORNER_DOT_EPSILON- 1);
                             var axis = factor * (curDir - prevDir).Normalize();
