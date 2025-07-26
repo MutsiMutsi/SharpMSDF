@@ -40,7 +40,7 @@ namespace SharpMSDF.IO
         /// bitmap width/height for MSDF generation.
         /// Only TrueType outlines (glyf table) are supported.
         /// </summary>
-        public static Shape LoadGlyph(
+        public static Shape LoadGlyphShape(
         Typeface typeface,
         uint unicode,
         ref double advance,

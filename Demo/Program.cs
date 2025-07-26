@@ -6,7 +6,7 @@ using SharpMSDF.IO;
 using SharpMSDF.Core;
 using System.Runtime.CompilerServices;
 
-namespace Msdfgen.ManualTest
+namespace SharpMSDF.Demo
 {
     internal static class Program
     {
@@ -14,7 +14,7 @@ namespace Msdfgen.ManualTest
         {
             double advance = 0;
             var font = FontImporter.LoadFont("micross.ttf"); 
-            var shape = FontImporter.LoadGlyph(font, 'A', ref advance, out int bitmapWidth, out int bitmapHeight);
+            var shape = FontImporter.LoadGlyphShape(font, 'A', ref advance, out int bitmapWidth, out int bitmapHeight);
             int scale = 3;
             var msdf = new Bitmap<float>( scale*bitmapWidth, scale*bitmapHeight, 3);
 
