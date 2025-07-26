@@ -29,6 +29,7 @@ namespace SharpMSDF.Core
             N = n;
         }
 
+        public readonly Span<T> Slice(int x, int y) => Pixels.AsSpan(GetIndex(x, y), N);
         public readonly int GetIndex(int x, int y, int channel = 0) => N * (OriginalWidth * (SubY + y) + SubX + x) + channel;
         public ref T this[int x, int y, int channel = 0] => ref Pixels[GetIndex(x, y, channel)];
         
@@ -36,7 +37,7 @@ namespace SharpMSDF.Core
     }
 
 
-    /// Constant reference to a 2D image bitmap or a buffer acting as one. Pixel storage not owned or managed by the object.
+    /// Constant reference to a 2D image bitmap or a Buffer acting as one. Pixel storage not owned or managed by the object.
     public readonly struct BitmapConstRef<T> where T : struct
     {
         internal readonly T[] _Pixels;
@@ -58,6 +59,7 @@ namespace SharpMSDF.Core
             N = n;
         }
 
+        public readonly ReadOnlySpan<T> Slice(int x, int y) => _Pixels.AsSpan(GetIndex(x, y), N);
         public readonly int GetIndex(int x, int y, int channel = 0) => N * (OriginalWidth * (SubY + y) + SubX + x) + channel;
         public T this[int x, int y, int channel = 0] => _Pixels[GetIndex(x, y, channel)];
 

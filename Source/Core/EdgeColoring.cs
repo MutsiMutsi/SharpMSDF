@@ -83,7 +83,6 @@ namespace SharpMSDF.Core
                 Vector2 prevDirection = contour.Edges[^1].Segment.Direction(1);
                 for (int i = 0; i < contour.Edges.Count; i++)
                 {
-                    //TODO:sus
                     if (IsCorner(prevDirection.Normalize(), contour.Edges[i].Segment.Direction(0).Normalize(), crossThreshold))
                         corners.Add(i);
                     prevDirection = contour.Edges[i].Segment.Direction(1);

@@ -59,7 +59,9 @@ namespace SharpMSDF.Core
             }
         }
 
+        /// <summary>
         /// Generates a conventional single-channel signed distance field.
+        /// </summary>
         public unsafe static void GenerateDistanceField<TCombiner, TConverter, TDistanceSelector, TDistance>(BitmapRefSingle output, Shape shape, SDFTransformation transformation) 
             where TDistanceSelector : IDistanceSelector<TDistance>, new() 
             where TCombiner : ContourCombiner<TDistanceSelector, TDistance>, new()
@@ -89,7 +91,7 @@ namespace SharpMSDF.Core
                         var p = transformation.Projection.UnprojectVector(new Vector2(x + .5f, y + .5f));
                         // get the signed‐distance
                         TDistance dist = distanceFinder.Distance(p);
-                        // write into the pixel buffer
+                        // write into the pixel Buffer
                         float* pixel = pixels + output.GetIndex(x, row);
                         converter.Convert(pixel, dist, x, row);
                     }
@@ -98,7 +100,9 @@ namespace SharpMSDF.Core
             }
         }
 
-
+        /// <summary>
+        /// Generates a conventional single-channel signed distance field.
+        /// </summary>
         public static void GenerateSDF(BitmapRefSingle output, Shape shape, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
@@ -109,7 +113,9 @@ namespace SharpMSDF.Core
                     (output, shape, transformation);
         }
 
+        /// <summary>
         /// Generates a single-channel signed perpendicular distance field.
+        /// </summary>
         public static void GeneratePSDF(BitmapRefSingle output, Shape shape, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
@@ -120,7 +126,9 @@ namespace SharpMSDF.Core
                     (output, shape, transformation);
         }
 
+        /// <summary>
         /// Generates a multi-channel signed distance field. Edge colors must be assigned first! (See edgeColoringSimple)
+        /// </summary>
         public static void GenerateMSDF(BitmapRefMulti output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
         {
             if (config.OverlapSupport)
@@ -129,10 +137,12 @@ namespace SharpMSDF.Core
             else
                 GenerateDistanceField<SimpleContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
                     (output, shape, transformation);
-            // TODO : Error Correction method
+            MSDFErrorCorrection.ErrorCorrection(output, shape, transformation, config);
         }
 
+        /// <summary>
         /// Generates a multi-channel signed distance field with true distance in the alpha channel. Edge colors must be assigned first.
+        /// </summary>
         public static void GenerateMTSDF(BitmapRefMultiAndTrue output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
         {
             if (config.OverlapSupport)
@@ -141,7 +151,7 @@ namespace SharpMSDF.Core
             else
                 GenerateDistanceField<SimpleContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
                     (output, shape, transformation);
-            // TODO : Error Correction method
+            MSDFErrorCorrection.ErrorCorrection(output, shape, transformation, config);
         }
 
 

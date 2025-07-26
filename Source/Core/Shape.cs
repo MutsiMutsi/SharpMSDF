@@ -79,7 +79,9 @@ namespace SharpMSDF.Core
             }
         }
 
+        /// <summary>
         /// Normalizes the Shape geometry for distance field generation.
+        /// </summary>
         public void Normalize()
         {
             for (int c = 0; c < Contours.Count; c++)

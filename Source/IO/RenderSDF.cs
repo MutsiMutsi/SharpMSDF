@@ -137,7 +137,7 @@ namespace SharpMSDF.IO
                             var v = (byte) Math.Clamp(bitmap[x, y] * 0x100, 0, 0xff);
                             bitmap[x, y] = v / 255.0f;
                             break;
-                        case 2:
+                        case 3:
                             var r = (byte)Math.Clamp(bitmap[x, y, 0] * 0x100, 0, 0xff);
                             var g = (byte)Math.Clamp(bitmap[x, y, 1] * 0x100, 0, 0xff);
                             var b = (byte)Math.Clamp(bitmap[x, y, 2] * 0x100, 0, 0xff);

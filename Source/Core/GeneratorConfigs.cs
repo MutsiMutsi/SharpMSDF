@@ -43,22 +43,22 @@
         public double MinImproveRatio;
 
         /// <summary>
-        /// An optional buffer to avoid dynamic allocation. Must have at least as many bytes as the MSDF has pixels.
+        /// An optional Buffer to avoid dynamic allocation. Must have at least as many bytes as the MSDF has pixels.
         /// </summary>
-        public unsafe byte* buffer;
+        public byte[] Buffer;
 
-        public unsafe ErrorCorrectionConfig(
+        public ErrorCorrectionConfig(
             OpMode mode = OpMode.EDGE_PRIORITY,
             ConfigDistanceCheckMode distanceCheckMode = ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE,
             double minDeviationRatio = DefaultMinDeviationRatio,
             double minImproveRatio = DefaultMinImproveRatio,
-            byte* buffer = null)
+            byte[] buffer = null)
         {
-            this.Mode = mode;
-            this.DistanceCheckMode = distanceCheckMode;
-            this.MinDeviationRatio = minDeviationRatio;
-            this.MinImproveRatio = minImproveRatio;
-            this.buffer = buffer;
+            Mode = mode;
+            DistanceCheckMode = distanceCheckMode;
+            MinDeviationRatio = minDeviationRatio;
+            MinImproveRatio = minImproveRatio;
+            Buffer = buffer;
         }
     }
 

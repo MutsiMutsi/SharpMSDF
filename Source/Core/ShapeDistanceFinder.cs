@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace SharpMSDF.Core
 {
     public class ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>
-        where  TDistanceSelector : IDistanceSelector<TDistance>
+        where  TDistanceSelector : IDistanceSelector<TDistance>, new()
         where TCombiner : ContourCombiner<TDistanceSelector,TDistance>, new()
     {
         public delegate double DistanceType(); // Will be overridden by TContourCombiner.DistanceType
@@ -28,7 +28,6 @@ namespace SharpMSDF.Core
         {
             ContourCombiner.Reset(origin);
 
-            //TODO : sus
             fixed (EdgeCache* edgeCacheStart = ShapeEdgeCache)
             {
                 EdgeCache* edgeCache = edgeCacheStart;

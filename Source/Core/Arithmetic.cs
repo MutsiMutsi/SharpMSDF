@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Typography.OpenFont;
 
 namespace SharpMSDF.Core
 {
@@ -15,7 +16,31 @@ namespace SharpMSDF.Core
         {
             return n >= 0.0 && n <= 1.0 ? n : (n > 0)? 1.0: 0.0;
         }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Clamp(double n, double b)
+        {
+            return (n >= 0 && n <= b) ? n : ((n > 0)? 1: 0) * b;
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Clamp(double n, double a, double b)
+        {
+            return n >= a && n <= b ? n : n < a ? a : b;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Clamp(int n, int b)
+        {
+            return (n >= 0 && n <= b) ? n : ((n > 0)? 1: 0) * b;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Clamp(int n, int a, int b)
+        {
+            return n >= a && n <= b ? n : n < a ? a : b;
+        }
+
+        
         /// Returns the middle out of three values
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Median(float a, float b, float c)

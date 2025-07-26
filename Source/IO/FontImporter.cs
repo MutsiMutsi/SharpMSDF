@@ -10,7 +10,7 @@ using SharpMSDF.Core;
 
 namespace SharpMSDF.IO
 {
-    public static class ImportFont
+    public static class FontImporter
     {
 
         public static Typeface LoadFont(string filename)

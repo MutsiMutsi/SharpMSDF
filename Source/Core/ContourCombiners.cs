@@ -1,7 +1,5 @@
 ﻿namespace SharpMSDF.Core
 {
-    // todo: Fill
-
     internal static class DistanceUtils
     {
         public static void InitDistance<T>(ref T d)
@@ -56,6 +54,7 @@
 
     public abstract class ContourCombiner<TDistanceSelector, TDistance>
     {
+        public ContourCombiner() { }
         public virtual void NonCtorInit(Shape shape) { }
         public abstract void Reset(Vector2 origin);
         public abstract TDistanceSelector EdgeSelector(int contourIndex);

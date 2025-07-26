@@ -5,7 +5,7 @@ namespace SharpMSDF.Core
 {
     public static class EquationSolver
     {
-        public static int SolveQuadratic(double[] x, double a, double b, double c)
+        public static int SolveQuadratic(Span<double> x, double a, double b, double c)
         {
             // a == 0 -> linear equation
             if (a == 0 || Math.Abs(b) > 1e12 * Math.Abs(a))
@@ -40,7 +40,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        private static int SolveCubicNormed(double[] x, double a, double b, double c)
+        private static int SolveCubicNormed(Span<double> x, double a, double b, double c)
         {
             double a2 = a * a;
             double q = (1.0 / 9.0) * (a2 - 3 * b);
@@ -75,7 +75,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        public static int SolveCubic(double[] x, double a, double b, double c, double d)
+        public static int SolveCubic(Span<double> x, double a, double b, double c, double d)
         {
             if (a != 0)
             {

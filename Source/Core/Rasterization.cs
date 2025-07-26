@@ -63,8 +63,7 @@ namespace SharpMSDF.Core
                     {
                         bool fill = scanline.Filled(projection.UnprojectX(x + 0.5), fillRule);
 
-                        // TODO : Sus
-                        //float *msd = sdf(x, row);
+                        //float *Msd = sdf(x, row);
                         float* msd = pixels + sdf.GetIndex(x, y);
 
                         float sd = Arithmetic.Median(msd[0], msd[1], msd[2]);
@@ -109,7 +108,7 @@ namespace SharpMSDF.Core
 
                                 if (neighborMatch < 0)
                                 {
-                                    //float *msd = sdf(x, row);
+                                    //float *Msd = sdf(x, row);
                                     float* msd = pixels + sdf.GetIndex(x,y);
                                     msd[0] = 1f - msd[0];
                                     msd[1] = 1f - msd[1];
