@@ -109,14 +109,14 @@ namespace SharpMSDF.IO
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static byte PixelFloatToByte(float x)
+        internal static byte PixelFloatToByte(float x)
         {
             float clamped = Arithmetic.Clamp(x); // clamps between 0.0 and 1.0
             return (byte)~(int)(255.5f - 255f * clamped);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static float PixelByteToFloat(byte x)
+        internal static float PixelByteToFloat(byte x)
         {
             return x * (1f / 255f);
         }
