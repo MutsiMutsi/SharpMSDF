@@ -11,7 +11,7 @@ namespace SharpMSDF.IO
     {
         public static bool SavePng(BitmapConstRef<float> bitmap, string filename)
         {
-            Span<byte> pixels = stackalloc byte[4 * bitmap.SubWidth * bitmap.SubHeight];
+            Span<byte> pixels = new byte[4 * bitmap.SubWidth * bitmap.SubHeight];
             int idx = 0;
             for (int y = bitmap.SubHeight - 1; y >= 0; y--)
             {

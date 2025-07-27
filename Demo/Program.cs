@@ -5,6 +5,8 @@ using Typography.OpenFont;
 using SharpMSDF.IO;
 using SharpMSDF.Core;
 using System.Runtime.CompilerServices;
+using OpMode = SharpMSDF.Core.ErrorCorrectionConfig.OpMode;
+using ConfigDistanceCheckMode = SharpMSDF.Core.ErrorCorrectionConfig.ConfigDistanceCheckMode;
 
 namespace SharpMSDF.Demo
 {
@@ -12,31 +14,34 @@ namespace SharpMSDF.Demo
     {
         static void Main(string[] args)
         {
-            double advance = 0;
-            Console.WriteLine((uint)'&');
-            var font = FontImporter.LoadFont("micross.ttf"); 
-            var shape = FontImporter.LoadGlyphShape(font, '&', ref advance, out int bitmapWidth, out int bitmapHeight);
-            int scale = 3;
-            var msdf = new Bitmap<float>( scale*bitmapWidth, scale*bitmapHeight, 3);
+            var font = FontImporter.LoadFont("consolab.ttf"); 
+            var shape = FontImporter.LoadGlyph(font, 'A', FontCoordinateScaling.EmNormalized);
+            int size = 64;
+            var msdf = new Bitmap<float>( size, size, 3);
 
+            shape.OrientContours(); // This will orient the windings
             shape.Normalize();
-            EdgeColoring.EdgeColoringSimple(shape, 6.0); // Angle Thereshold
+            EdgeColoring.EdgeColoringSimple(shape, 3.0); // Angle Thereshold
 
-            var distMap = new DistanceMapping(new(1)); // Range
-            var transformation = new SDFTransformation( new Projection( new(scale), new()), distMap);
+            var distMap = new DistanceMapping(new(4f/size)); // Range
+                                                                      //  Scale    Translation  
+            var transformation = new SDFTransformation( new Projection( new(size-2), new(0.125)), distMap);
 
             MSDFGen.GenerateMSDF(
                 msdf,
                 shape,
                 transformation,
-                new MSDFGeneratorConfig(true, new ErrorCorrectionConfig(ErrorCorrectionConfig.OpMode.EDGE_PRIORITY, ErrorCorrectionConfig.ConfigDistanceCheckMode.ALWAYS_CHECK_DISTANCE))
+                new MSDFGeneratorConfig(
+                    overlapSupport: true, 
+                    errorCorrection: new ErrorCorrectionConfig(OpMode.EDGE_PRIORITY, ConfigDistanceCheckMode.ALWAYS_CHECK_DISTANCE)
+                )
             );
-            Bmp.SaveBmp(msdf, "output.bmp");
+            Png.SavePng(msdf, "output.png");
             
             // Rendering Preview
             var rast = new Bitmap<float>(1024, 1024);
-            Render.RenderSdf(rast, msdf, 6.0);
-            Bmp.SaveBmp(rast, "rasterized.bmp");
+            Render.RenderSdf(rast, msdf, 8.0);
+            Png.SavePng(rast, "rasterized.png");
         }
     }
 }

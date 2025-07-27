@@ -10,6 +10,13 @@ using SharpMSDF.Core;
 
 namespace SharpMSDF.IO
 {
+    public enum FontCoordinateScaling
+    {
+        None,
+        EmNormalized,
+        LegacyNormalized
+    }
+
     public static class FontImporter
     {
 
@@ -37,30 +44,61 @@ namespace SharpMSDF.IO
         /// <summary>
         /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
         /// returning its advance (in the same 1/64 units) and the ideal
-        /// bitmap width/height for MSDF generation.
         /// Only TrueType outlines (glyf table) are supported.
         /// </summary>
-        public static Shape LoadGlyphShape(
-        Typeface typeface,
-        uint unicode,
-        ref double advance,
-        out int bitmapWidth,
-        out int bitmapHeight,
-        double scale = 1.0/64.0)
+        public static Shape LoadGlyph(
+            Typeface typeface,
+            uint unicode,
+            FontCoordinateScaling scaling)
         {
+            return LoadGlyph(typeface, unicode, scaling, out _, out _);
+        }
+
+        /// <summary>
+        /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
+        /// returning its advance (in the same 1/64 units) and the ideal
+        /// Only TrueType outlines (glyf table) are supported.
+        /// </summary>
+        public static Shape LoadGlyph(
+            Typeface typeface,
+            uint unicode,
+            FontCoordinateScaling scaling,
+            out float idealWidth,
+            out float idealHeight
+            )
+        {
+            double adv = 0f;
+            return LoadGlyph(typeface, unicode, scaling, out idealWidth, out idealHeight, ref adv);
+        }
+
+        /// <summary>
+        /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
+        /// returning its advance (in the same 1/64 units) and the ideal
+        /// Only TrueType outlines (glyf table) are supported.
+        /// </summary>
+        public static Shape LoadGlyph(
+            Typeface typeface,
+            uint unicode,
+            FontCoordinateScaling scaling,
+            out float idealWidth,
+            out float idealHeight,
+            ref double advance
+            )
+        {
+            //const double scale = 1.0 / 64;
             ushort glyphIndex = (ushort)typeface.GetGlyphIndex((int)unicode);
             var glyph = typeface.GetGlyph(glyphIndex);
             if (glyph == null)
             {
                 advance = 0;
-                bitmapWidth = bitmapHeight = 0;
+                idealWidth = idealHeight = 0;
                 return new Shape();
             }
 
             int advUnits = typeface.GetAdvanceWidthFromGlyphIndex(glyphIndex);
-            advance = advUnits * scale;
+            advance = advUnits / 64;
 
-            const int padding = 2;      // pixels
+            //const int padding = 0;      // pixels
 
             // 1) Raw glyph bounds in font units
             var bounds = glyph.Bounds;
@@ -68,20 +106,33 @@ namespace SharpMSDF.IO
             double hUnits = bounds.YMax - bounds.YMin;
 
             // 2) Compute padded bitmap dimensions
-            bitmapWidth = (int)Math.Ceiling(wUnits * scale) + padding * 2;
-            bitmapHeight = (int)Math.Ceiling(hUnits * scale) + padding * 2;
+            idealWidth = (float)wUnits / 64f; // + padding * 2;
+            idealHeight = (float)hUnits / 64f; // + padding * 2;
 
             // 3) Compute offset so that glyph’s bottom‐left maps to (padding, padding)
-            double offsetX = -bounds.XMin * scale + padding;
-            double offsetY = -bounds.YMin * scale + padding;
+            double offsetX = -bounds.XMin / 64; // + padding
+            double offsetY = -bounds.YMin / 64; // + padding
 
             Shape shape = new Shape();
             GlyphPointF[] pts = glyph.GlyphPoints;
             ushort[] ends = glyph.EndPoints;
             int start = 0;
 
+            double divW = 1.0;
+            double divH = 1.0;
+            if (scaling == FontCoordinateScaling.EmNormalized)
+            {
+                divW = wUnits;
+                divH = hUnits;
+            }
+            else if (scaling == FontCoordinateScaling.LegacyNormalized)
+            {
+                divW = 64;
+                divH = 64;
+            }
+
             (double X, double Y) ToShapeSpace(GlyphPointF p)
-                => (p.X * scale + offsetX, p.Y * scale + offsetY);
+                => ((p.X + offsetX )/ divW, (p.Y + offsetY) / divH);
 
             foreach (ushort end in ends)
             {
@@ -191,9 +242,6 @@ namespace SharpMSDF.IO
                 shape.Contours.Add(contour);
                 start = end + 1;
             }
-
-            // This will orient the windings
-            shape.OrientContours();
 
             return shape;
         }
