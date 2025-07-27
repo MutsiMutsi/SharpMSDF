@@ -35,7 +35,7 @@ namespace SharpMSDF.IO
         }
 
         /// <summary>
-        /// Loads a glyph from a Typography Typeface into an Msdfgen.Shape,
+        /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
         /// returning its advance (in the same 1/64 units) and the ideal
         /// bitmap width/height for MSDF generation.
         /// Only TrueType outlines (glyf table) are supported.
@@ -191,6 +191,9 @@ namespace SharpMSDF.IO
                 shape.Contours.Add(contour);
                 start = end + 1;
             }
+
+            // This will orient the windings
+            shape.OrientContours();
 
             return shape;
         }

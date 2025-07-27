@@ -190,32 +190,30 @@ namespace SharpMSDF.Core
             var orientations = new int[Contours.Count];
             var intersections = new List<Intersection>();
 
-            for (int i = 0; i < Contours.Count; ++i)
-            {
-                if (orientations[i] == 0 && Contours[i].Edges.Count > 0)
-                {
-                    double y0 = Contours[i].Edges[0].Segment.Point(0).Y;
-                    double y1 = y0;
-                    for (int j = 0; j < Contours[i].Edges.Count; j++)
-                    {
-                        var edge = Contours[i].Edges[j];
-                        if (y0 == y1)
-                            y1 = edge.Segment.Point(1).Y;
-                        if (y0 == y1)
-                            y1 = edge.Segment.Point(_Ratio).Y;
-                    }
-                    double y = Arithmetic.Mix(y0, y1, _Ratio);
-                    double[] x = new double[3];
-                    int[] dy = new int[3];
+            Span<double> x = stackalloc double[3];
+            Span<int> dy = stackalloc int[3];
 
-                    for (int j = 0; j < Contours.Count; ++j)
+            for (int c = 0; c < Contours.Count; ++c)
+            {
+                if (orientations[c] == 0 && Contours[c].Edges.Count > 0)
+                {
+                    double y0 = Contours[c].Edges[0].Segment.Point(0).Y;
+                    double y1 = y0;
+                    for (int e = 0; e < Contours[c].Edges.Count && y0 == y1; e++)
+                            y1 = Contours[c].Edges[e].Segment.Point(1).Y;
+                    for (int e = 0; e < Contours[c].Edges.Count && y0 == y1;  e++)
+                            y1 = Contours[c].Edges[e].Segment.Point(_Ratio).Y;
+
+                    double y = Arithmetic.Mix(y0, y1, _Ratio);
+
+                    for (int ci = 0; ci < Contours.Count; ++ci)
                     {
-                        for (int k = 0; k < Contours[j].Edges.Count; k++)
+                        for (int ei = 0; ei < Contours[ci].Edges.Count; ei++)
                         {
-                            var edge = Contours[j].Edges[k];
+                            var edge = Contours[ci].Edges[ei];
                             int n = edge.Segment.ScanlineIntersections(x, dy, y);
-                            for (int m = 0; m < n; ++m)
-                                intersections.Add(new Intersection { X = x[m], Direction = dy[m], ContourIndex = j });
+                            for (int k = 0; k < n; ++k)
+                                intersections.Add(new Intersection { X = x[k], Direction = dy[k], ContourIndex = ci });
                         }
                     }
 
@@ -226,7 +224,7 @@ namespace SharpMSDF.Core
                         for (int j = 1; j < intersections.Count; ++j)
                             if (intersections[j].X == intersections[j - 1].X)
                             {
-                                //intersections[j].direction = intersections[j - 1].direction = 0;
+                                //intersections[e].direction = intersections[e - 1].direction = 0;
                                 intersections[j - 1] = intersections[j - 1] with { Direction = 0 };
                                 intersections[j] = intersections[j] with { Direction = 0 };
                             }

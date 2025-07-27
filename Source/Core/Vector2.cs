@@ -12,6 +12,8 @@ namespace SharpMSDF.Core
     {
         public double X, Y;
 
+        public static Vector2 Zero { get; } = new (0, 0);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector2(double val)
         {

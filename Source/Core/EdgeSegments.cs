@@ -75,7 +75,7 @@ namespace SharpMSDF.Core
                 }
             }
         }
-        public abstract int ScanlineIntersections(double[] x, int[] dy, double y);
+        public abstract int ScanlineIntersections(Span<double> x, Span<int> dy, double y);
         public abstract void Bound(ref double l, ref double b, ref double r, ref double t);
         public abstract void Reverse();
         public abstract void MoveStartPoint(Vector2 to);
@@ -126,7 +126,7 @@ namespace SharpMSDF.Core
                 Math.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
         }
 
-        public override int ScanlineIntersections(double[] x, int[] dy, double y)
+        public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
         {
             if ((y >= P[0].Y && y < P[1].Y) || (y >= P[1].Y && y < P[0].Y))
             {
@@ -220,7 +220,7 @@ namespace SharpMSDF.Core
             double d = Vector2.Dot(qa, ab);
 
             // solve for param in [0,1]
-            double[] t = new double[3];
+            Span<double> t = stackalloc double[3];
             int solutions = EquationSolver.SolveCubic(t, a, b, c, d);
 
             // start by assuming the closest is at param=0 (Point A)
@@ -282,7 +282,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        public override int ScanlineIntersections(double[] x, int[] dy, double y)
+        public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
         {
             int total = 0;
             int nextDY = y > P[0].Y ? 1 : -1;
@@ -488,7 +488,7 @@ namespace SharpMSDF.Core
 
         }
 
-        public override int ScanlineIntersections(double[] x, int[] dy, double y)
+        public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
         {
             int total = 0;
             int nextDY = y > P[0].Y ? 1 : -1;

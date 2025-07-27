@@ -13,15 +13,16 @@ namespace SharpMSDF.Demo
         static void Main(string[] args)
         {
             double advance = 0;
+            Console.WriteLine((uint)'&');
             var font = FontImporter.LoadFont("micross.ttf"); 
-            var shape = FontImporter.LoadGlyphShape(font, 'A', ref advance, out int bitmapWidth, out int bitmapHeight);
+            var shape = FontImporter.LoadGlyphShape(font, '&', ref advance, out int bitmapWidth, out int bitmapHeight);
             int scale = 3;
             var msdf = new Bitmap<float>( scale*bitmapWidth, scale*bitmapHeight, 3);
 
             shape.Normalize();
-            EdgeColoring.EdgeColoringSimple(shape, 3.0); // Angle Thereshold
+            EdgeColoring.EdgeColoringSimple(shape, 6.0); // Angle Thereshold
 
-            var distMap = new DistanceMapping(new(1.5)); // Range
+            var distMap = new DistanceMapping(new(1)); // Range
             var transformation = new SDFTransformation( new Projection( new(scale), new()), distMap);
 
             MSDFGen.GenerateMSDF(
@@ -34,7 +35,7 @@ namespace SharpMSDF.Demo
             
             // Rendering Preview
             var rast = new Bitmap<float>(1024, 1024);
-            Render.RenderSdf(rast, msdf, 3.0);
+            Render.RenderSdf(rast, msdf, 6.0);
             Bmp.SaveBmp(rast, "rasterized.bmp");
         }
     }
