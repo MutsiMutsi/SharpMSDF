@@ -67,7 +67,8 @@ namespace SharpMSDF.Core
             where TCombiner : ContourCombiner<TDistanceSelector, TDistance>, new()
             where TConverter : DistancePixelConversion<TDistance>, new()
         {
-            // 1. Create the converter
+            // 1. Create the converter 
+            // TODO: potential of less H-Allocation
             var converter = new TConverter() { Mapping = transformation.DistanceMapping };
             // 2. Create your combiner‐driven distance finder
             var distanceFinder = new ShapeDistanceFinder<TCombiner,TDistanceSelector, TDistance>(shape);

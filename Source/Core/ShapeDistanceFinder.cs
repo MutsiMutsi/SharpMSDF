@@ -61,7 +61,7 @@ namespace SharpMSDF.Core
             return ContourCombiner.Distance();
         }
 
-        public unsafe static object OneShotDistance(Shape shape, Vector2 origin)
+        public unsafe static TDistance OneShotDistance(Shape shape, Vector2 origin)
         {
             var combiner = new TCombiner();
             combiner.NonCtorInit(shape);

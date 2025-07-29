@@ -133,7 +133,7 @@ namespace SharpMSDF.Core
         }
 
         /// Computes the minimum bounding box that fits the Shape, optionally with a (mitered) border.
-        public Bounds GetBounds(double border, double miterLimit, int polarity)
+        public Bounds GetBounds(double border = 0.0, double miterLimit = 0.0, int polarity = 0)
         {
             const double LARGE_VALUE = 1e240;
             var bounds = new Bounds

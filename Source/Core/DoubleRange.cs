@@ -57,5 +57,8 @@ namespace SharpMSDF.Core
         {
             return new DoubleRange(Lower / divisor, Upper / divisor);
         }
+
+        public static DoubleRange operator +(DoubleRange a, DoubleRange b) => new DoubleRange(a.Lower + b.Lower, a.Upper + b.Upper);
+
     }
 }
