@@ -573,9 +573,9 @@ namespace SharpMSDF.Core
                         bool artifact = false;
                         do
                         {
-                            l = sdf.Slice(x - 1, y);
                             if (x > 0)
                             {
+                                l = sdf.Slice(x - 1, y);
                                 if (HasLinearArtifact(new BaseArtifactClassifier(hSpan, protectedFlag), cm, c, l))
                                 {
                                     artifact = true;
@@ -583,9 +583,9 @@ namespace SharpMSDF.Core
                                 }
                             }
 
-                            b = sdf.Slice(x, y - 1);
                             if (y > 0)
                             {
+                                b = sdf.Slice(x, y - 1);
                                 if (HasLinearArtifact(new BaseArtifactClassifier(vSpan, protectedFlag), cm, c, b))
                                 {
                                     artifact = true;
@@ -593,9 +593,9 @@ namespace SharpMSDF.Core
                                 }
                             }
 
-                            r = sdf.Slice(x + 1, y);
                             if (x < sdf.SubWidth - 1)
                             {
+                                r = sdf.Slice(x + 1, y);
                                 if (HasLinearArtifact(new BaseArtifactClassifier(hSpan, protectedFlag), cm, c, r))
                                 {
                                     artifact = true;
@@ -603,9 +603,9 @@ namespace SharpMSDF.Core
                                 }
                             }
 
-                            t = sdf.Slice(x, y + 1);
                             if (y < sdf.SubHeight - 1)
                             {
+                                t = sdf.Slice(x, y + 1);
                                 if (HasLinearArtifact(new BaseArtifactClassifier(vSpan, protectedFlag), cm, c, t))
                                 {
                                     artifact = true;
@@ -834,7 +834,7 @@ namespace SharpMSDF.Core
         }
 
 
-        internal static void ErrorCorrection(BitmapRef<float> sdf, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config) 
+        public static void ErrorCorrection(BitmapRef<float> sdf, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config) 
         {
             CorrectionInner(sdf, shape, transformation, config);
         }

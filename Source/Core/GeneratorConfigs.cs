@@ -96,7 +96,7 @@
         /// <summary>
         /// Configuration of the error correction pass.
         /// </summary>
-        public ErrorCorrectionConfig ErrorCorrection { get; set; }
+        public ErrorCorrectionConfig ErrorCorrection;
 
         public MSDFGeneratorConfig()
         {

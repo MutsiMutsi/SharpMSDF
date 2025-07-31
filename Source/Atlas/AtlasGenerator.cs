@@ -10,8 +10,8 @@ namespace SharpMSDF.Atlas
 
     /// <summary>
     /// Prototype of an atlas generator class.
-    /// An atlas generator maintains the atlas bitmap (AtlasStorage) and its layout and facilitates
-    /// generation of bitmap representation of glyphs. The layout of the atlas is given by the caller.
+    /// An atlas generator maintains the atlas bitmap (AtlasStorage) and its _Layout and facilitates
+    /// generation of bitmap representation of glyphs. The _Layout of the atlas is given by the caller.
     /// </summary>
     public abstract class AtlasGenerator
     {
@@ -51,7 +51,7 @@ namespace SharpMSDF.Atlas
     public delegate void GeneratorFunction<T>(
         BitmapRef<T> bitmap,
         GlyphGeometry glyph,
-        in GeneratorAttributes attributes
-    );
+        GeneratorAttributes attributes
+    ) where T : struct;
 
 }

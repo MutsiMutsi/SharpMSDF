@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -51,18 +52,19 @@ namespace SharpMSDF.Atlas
             }
         }
         /// Packs the rectangle array, returns how many didn't fit (0 on success)
-        public int Pack(Span<Rectangle> rectangles)
+        public int Pack<TRect>(List<TRect> rectangles)
+            where TRect : IRectangle
         {
-            Span<int> remainingRects = stackalloc int[rectangles.Length];
+            Span<int> remainingRects = stackalloc int[rectangles.Count];
 
-            for (int i = 0; i < rectangles.Length; ++i)
+            for (int i = 0; i < rectangles.Count; ++i)
                 remainingRects[i] = i;
             while (remainingRects.Length > 0)
             {
                 int bestFit = WORST_FIT;
                 int bestSpace = -1;
                 int bestRect = -1;
-                Rectangle rect;
+                TRect rect;
                 for (int i = 0; i < _Spaces.Count; ++i)
                 {
                     Rectangle space = _Spaces[i];
@@ -100,11 +102,11 @@ namespace SharpMSDF.Atlas
             }
             return remainingRects.Length;
         }
-        public int Pack(Span<Rectangle> spaces, Span<OrientedRectangle> rectangles)
+        public int Pack(List<Rectangle> spaces, List<OrientedRectangle> rectangles)
         {
-            Span<int> remainingRects = stackalloc int[rectangles.Length];
+            Span<int> remainingRects = stackalloc int[rectangles.Count];
 
-            for (int i = 0; i < rectangles.Length; ++i)
+            for (int i = 0; i < rectangles.Count; ++i)
                 remainingRects[i] = i;
             while (remainingRects.Length > 0)
             {
@@ -113,7 +115,7 @@ namespace SharpMSDF.Atlas
                 int bestRect = -1;
                 bool bestRotated = false;
                 Rectangle rect;
-                for (int i = 0; i < spaces.Length; ++i)
+                for (int i = 0; i < spaces.Count; ++i)
                 {
                     Rectangle space = spaces[i];
                     for (int j = 0; j < remainingRects.Length; ++j)
@@ -197,6 +199,107 @@ namespace SharpMSDF.Atlas
                 _Spaces.Add(a);
             if (b.Width > 0 && b.Height > 0)
                 _Spaces.Add(b);
+        }
+
+        public static void CopyRectanglePlacement(ref Rectangle dst, Rectangle src) {
+            dst.X = src.X;
+            dst.Y = src.Y;
+        }
+
+        public static void CopyRectanglePlacement(ref OrientedRectangle dst, OrientedRectangle src)
+        {
+            dst.X = src.X;
+            dst.Y = src.Y;
+            dst.Rotated = src.Rotated;
+        }
+
+
+    /// <summary>
+    /// Packs the rectangle array into an atlas with fixed dimensions.
+    /// Returns the error code (0 on success, >0 if some didn't fit).
+    /// </summary>
+    public static int Pack<T>(List<T> rectangles, int width, int height, int spacing = 0)
+            where T : IRectangle
+        {
+            // Expand each box by spacing
+            if (spacing != 0)
+            {
+                foreach (var r in rectangles)
+                {
+                    r.Width += spacing;
+                    r.Height += spacing;
+                }
+            }
+
+            // Delegate to your instance-based packer
+            var packer = new RectanglePacker(width + spacing, height + spacing);
+            int result = packer.Pack(rectangles);
+
+            // Shrink back
+            if (spacing != 0)
+            {
+                foreach (var r in rectangles)
+                {
+                    r.Width -= spacing;
+                    r.Height -= spacing;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Packs the rectangle array into an atlas of unknown size.
+        /// Uses a size‐selector to iterate possible atlas sizes until it fits.
+        /// Returns the chosen (width, height).
+        /// </summary>
+        public static (int Width, int Height) PackWithSelector<SizeSelector, TRect>(List<TRect> rectangles, int spacing = 0)
+            where TRect : IRectangle, new()
+            where SizeSelector : ISizeSelector, new()
+        {
+            // Make a copy and expand by spacing
+            var copy = rectangles
+                .Select(r =>
+                {
+                    var c = new TRect();
+                    c.Width = r.Width + spacing;
+                    c.Height = r.Height + spacing;
+                    return c;
+                })
+                .ToArray();
+
+            // Compute total area (without spacing)
+            int totalArea = rectangles.Sum(r => r.Width * r.Height);
+
+            // Initialize selector
+            var selector = new SizeSelector();
+            selector.Initialize(totalArea);
+
+            (int Width, int Height) dimensions = default;
+
+            while (selector.Next(out int w, out int h))
+            {
+                //TODO : WORK ON THIS
+                var packer = new RectanglePacker(w + spacing, h + spacing);
+                //if (packer.Pack(copy) == 0)
+                {
+                    // success: record dims and copy placements back
+                    dimensions = (w, h);
+                    for (int i = 0; i < rectangles.Count; i++)
+                    {
+                        //if (rectangles[i] is Rectangle rect)
+                            //CopyRectanglePlacement(ref rect, copy[i]);
+
+                    }
+                    selector.Decrement();
+                }
+                //else
+                {
+                    selector.Increment();
+                }
+            }
+
+            return dimensions;
         }
     }
 }

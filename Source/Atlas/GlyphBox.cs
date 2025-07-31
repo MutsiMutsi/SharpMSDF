@@ -14,7 +14,7 @@ namespace SharpMSDF.Atlas
     /// The glyph box - its bounds in plane and atlas
     public struct GlyphBox
     {
-        public int Index;
+        public ushort Index;
         public double Advance;
         public Bounds Bounds;   
         public Rectangle Rect;

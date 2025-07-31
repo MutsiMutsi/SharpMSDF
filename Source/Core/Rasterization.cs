@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Core
 {
-    internal static class Rasterization
+    public static class Rasterization
     {
         /// Rasterizes the Shape into a monochrome bitmap.
         public static void Rasterize(BitmapRef<float> output, in Shape shape, in Projection projection, FillRule fillRule = FillRule.FILL_NONZERO)

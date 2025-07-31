@@ -37,7 +37,7 @@ namespace SharpMSDF.Core
     }
 
 
-    /// Constant reference to a 2D image bitmap or a Buffer acting as one. Pixel storage not owned or managed by the object.
+    /// Constant reference to a 2D image bitmap or a Buffer acting as one. Pixel _Storage not owned or managed by the object.
     public readonly struct BitmapConstRef<T> where T : struct
     {
         internal readonly T[] _Pixels;

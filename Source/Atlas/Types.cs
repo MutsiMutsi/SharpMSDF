@@ -3,12 +3,12 @@ namespace SharpMSDF.Atlas
 {
 
     /// Type of atlas image contents
-    enum ImageType
+    public enum ImageType
     {
         /// Rendered glyphs without anti-aliasing (two colors only)
-        HARD_MASK,
+        HardMask,
         /// Rendered glyphs with anti-aliasing
-        SOFT_MASK,
+        SoftMask,
         /// Signed (true) distance field
         SDF,
         /// Signed perpendicular distance field
@@ -20,7 +20,7 @@ namespace SharpMSDF.Atlas
     };
 
     /// Atlas image encoding
-    enum ImageFormat
+    public enum ImageFormat
     {
         UNSPECIFIED,
         PNG,
@@ -36,35 +36,35 @@ namespace SharpMSDF.Atlas
     };
 
     /// Glyph identification
-    enum GlyphIdentifierType
+    public enum GlyphIdentifierType
     {
-        GLYPH_INDEX,
-        UNICODE_CODEPOINT
+        GlyphIndex,
+        UnicodeCodepoint
     };
 
     /// Direction of the Y-axis
-    enum YDirection
+    public enum YDirection
     {
-        BOTTOM_UP,
-        TOP_DOWN
+        BottomUp,
+        TopDown
     };
 
-    /// The method of computing the layout of the atlas
-    enum PackingStyle
+    /// The method of computing the _Layout of the atlas
+    public enum PackingStyle
     {
-        TIGHT,
-        GRID
+        Tight,
+        Grid
     };
 
     /// Constraints for the atlas's dimensions - see size selectors for more info
-    enum DimensionsConstraint
+    public enum DimensionsConstraint
     {
-        NONE,
-        SQUARE,
-        EVEN_SQUARE,
-        MULTIPLE_OF_FOUR_SQUARE,
-        POWER_OF_TWO_RECTANGLE,
-        POWER_OF_TWO_SQUARE
+        None,
+        Square,
+        EvenSquare,
+        MultipleOfFourSquare,
+        PowerOfTwoRectangle,
+        PowerOfTwoSquares
     };
 
 }

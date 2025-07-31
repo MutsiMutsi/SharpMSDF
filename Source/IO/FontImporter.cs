@@ -7,6 +7,7 @@ using static System.Formats.Asn1.AsnWriter;
 using NumericsVector2 = System.Numerics.Vector2;
 using static System.Net.Mime.MediaTypeNames;
 using SharpMSDF.Core;
+using SharpMSDF.Font;
 
 namespace SharpMSDF.IO
 {
@@ -17,6 +18,19 @@ namespace SharpMSDF.IO
         LegacyNormalized
     }
 
+    /// Global metrics of a typeface (in face units).
+    public struct FontMetrics
+    {
+        /// The size of one EM.
+        public double EmSize;
+        /// The vertical position of the ascender and descender relative to the baseline.
+        public double AscenderY, DescenderY;
+        /// The vertical difference between consecutive baselines.
+        public double LineHeight;
+        /// The vertical position and thickness of the underline.
+        public double UnderlineY/*, UnderlineThickness*/;
+    };
+
     public static class FontImporter
     {
 
@@ -26,11 +40,35 @@ namespace SharpMSDF.IO
             OpenFontReader reader = new OpenFontReader();
             return reader.Read(file);
         }
-
-        public static double GetFontScale(Typeface font)
-        {
-            return font.UnitsPerEm / 64.0;
+        public static double GetFontCoordinateScale(Typeface face, FontCoordinateScaling coordinateScaling) {
+            switch (coordinateScaling) {
+                case FontCoordinateScaling.None:
+                    return 1;
+                case FontCoordinateScaling.EmNormalized:
+                    return 1.0/ (face.UnitsPerEm!=0? face.UnitsPerEm: 1.0);
+                case FontCoordinateScaling.LegacyNormalized:
+                    return 1.0 / 64.0;
+            }
+            return 1;
         }
+
+
+        public static bool GetFontMetrics(out FontMetrics metrics, Typeface face, FontCoordinateScaling coordinateScaling)
+        {
+            double scale = GetFontCoordinateScale(face, coordinateScaling);
+            metrics.EmSize = scale * face.UnitsPerEm;
+            metrics.AscenderY = scale * face.Ascender;
+            metrics.DescenderY = scale * face.Descender;
+            metrics.LineHeight = scale * (face.Bounds.YMax - face.Bounds.YMin);
+            metrics.UnderlineY = scale * face.UnderlinePosition;
+            //metrics.UnderlineThickness = not implemented
+            return true;
+        }
+
+        //public static double GetFontScale(Typeface face)
+        //{
+        //    return face.UnitsPerEm / 64.0;
+        //}
 
         public static void GetFontWhitespaceWidth(ref double spaceAdvance, ref double tabAdvance, Typeface font)
         {
@@ -100,7 +138,7 @@ namespace SharpMSDF.IO
 
             //const int padding = 0;      // pixels
 
-            // 1) Raw glyph bounds in font units
+            // 1) Raw glyph bounds in face units
             var bounds = glyph.Bounds;
             double wUnits = bounds.XMax - bounds.XMin;
             double hUnits = bounds.YMax - bounds.YMin;
@@ -122,8 +160,8 @@ namespace SharpMSDF.IO
             double divH = 1.0;
             if (scaling == FontCoordinateScaling.EmNormalized)
             {
-                divW = wUnits;
-                divH = hUnits;
+                divW = typeface.UnitsPerEm;
+                divH = typeface.UnitsPerEm;
             }
             else if (scaling == FontCoordinateScaling.LegacyNormalized)
             {
@@ -250,10 +288,15 @@ namespace SharpMSDF.IO
         private static Vector2 ToVec(GlyphPointF pt, double scale) =>
             new (pt.P.X / scale, pt.P.Y / scale);
 
-        public static double GetKerning(Typeface font, uint unicode1, uint unicode2)
+        public static bool GetKerning(out double kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
         {
-            var kerning = font.GetKernDistance(0, 1); // TODO: Figure out how to get from unicode
-            return kerning / 64.0;
+            kerning = font.GetKernDistance(font.GetGlyphIndex((int)unicode1), font.GetGlyphIndex((int)unicode2));
+            if (kerning == 0)
+            {
+                return false;
+            }
+            kerning *= GetFontCoordinateScale(font, scaling);
+            return true;
         }
 
     }

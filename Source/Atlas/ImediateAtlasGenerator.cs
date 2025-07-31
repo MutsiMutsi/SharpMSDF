@@ -1,57 +1,60 @@
 ﻿
-using SharpMSDF.Atlas;
+using SharpMSDF.Core;
 
 namespace SharpMSDF.Atlas
 {
-    public class ImmediateAtlasGenerator<T>
+    public class ImmediateAtlasGenerator<T, TStorage> 
+        where T : struct
+        where TStorage : AtlasStorage, new()
     {
         public readonly int N;
         public GeneratorFunction<T> GEN_FN { get; }
-        public AtlasStorage Storage => storage;
-        public List<GlyphBox> Layout => layout;
+        public TStorage Storage => _Storage;
+        public List<GlyphBox> Layout => _Layout;
 
-        private AtlasStorage storage;
-        private readonly List<GlyphBox> layout = new();
-        private List<T> glyphBuffer = new();
-        private List<byte> errorCorrectionBuffer = new();
-        private GeneratorAttributes attributes;
-        private int threadCount = 1;
+        private TStorage _Storage;
+        private readonly List<GlyphBox> _Layout = new();
+        private List<T> _GlyphBuffer = new();
+        private List<byte> _ErrorCorrectionBuffer = new();
+        private GeneratorAttributes _Attributes;
+        private int _ThreadCount = 1;
 
-        public ImmediateAtlasGenerator(int n, GeneratorFunction<T> genFn, Func<int, int, AtlasStorage> storageCtor)
+        public ImmediateAtlasGenerator(int n, GeneratorFunction<T> genFn)
         {
             N = n;
             GEN_FN = genFn;
-            storage = storageCtor(0, 0);
+            _Storage = new();
         }
 
-        public ImmediateAtlasGenerator(int width, int height, int n, GeneratorFunction<T> genFn, Func<int, int, AtlasStorage> storageCtor)
+        public ImmediateAtlasGenerator(int width, int height, int n, GeneratorFunction<T> genFn)
         {
             N = n;
             GEN_FN = genFn;
-            storage = storageCtor(width, height);
+            _Storage = new();
+            _Storage.Init(width, height, n);
         }
 
-        public void Generate(GlyphGeometry[] glyphs)
+        public void Generate(List<GlyphGeometry> glyphs)
         {
             int maxBoxArea = 0;
-            for (int i = 0; i < glyphs.Length; ++i)
+            for (int i = 0; i < glyphs.Count; ++i)
             {
                 GlyphBox box = glyphs[i];
-                maxBoxArea = Math.Max(maxBoxArea, box.rect.w * box.rect.h);
-                layout.Add(box);
+                maxBoxArea = Math.Max(maxBoxArea, box.Rect.Width * box.Rect.Height);
+                _Layout.Add(box);
             }
 
             int threadBufferSize = N * maxBoxArea;
-            if (threadCount * threadBufferSize > glyphBuffer.Count)
-                glyphBuffer = new List<T>(new T[threadCount * threadBufferSize]);
-            if (threadCount * maxBoxArea > errorCorrectionBuffer.Count)
-                errorCorrectionBuffer = new List<byte>(new byte[threadCount * maxBoxArea]);
+            if (_ThreadCount * threadBufferSize > _GlyphBuffer.Count)
+                _GlyphBuffer = new List<T>(new T[_ThreadCount * threadBufferSize]);
+            if (_ThreadCount * maxBoxArea > _ErrorCorrectionBuffer.Count)
+                _ErrorCorrectionBuffer = new List<byte>(new byte[_ThreadCount * maxBoxArea]);
 
-            var threadAttributes = new GeneratorAttributes[threadCount];
-            for (int i = 0; i < threadCount; ++i)
+            GeneratorAttributes[] threadAttributes = new GeneratorAttributes[_ThreadCount];
+            for (int i = 0; i < _ThreadCount; ++i)
             {
-                threadAttributes[i] = attributes;
-                threadAttributes[i].Config.ErrorCorrection.Buffer = errorCorrectionBuffer.GetRange(i * maxBoxArea, maxBoxArea).ToArray();
+                threadAttributes[i] = _Attributes;
+                threadAttributes[i].Config.ErrorCorrection.Buffer = _ErrorCorrectionBuffer.GetRange(i * maxBoxArea, maxBoxArea).ToArray();
             }
 
             var workload = new Workload((i, threadNo) =>
@@ -60,46 +63,46 @@ namespace SharpMSDF.Atlas
                 if (!glyph.IsWhitespace())
                 {
                     glyph.GetBoxRect(out int l, out int b, out int w, out int h);
-                    var span = glyphBuffer.GetRange(threadNo * threadBufferSize, threadBufferSize).ToArray();
+                    var span = _GlyphBuffer.GetRange(threadNo * threadBufferSize, threadBufferSize).ToArray();
                     var glyphBitmap = new BitmapRef<T>(span, w, h, N);
                     GEN_FN(glyphBitmap, glyph, threadAttributes[threadNo]);
                     var constRef = new BitmapConstRef<T>(glyphBitmap);
-                    ((dynamic)storage).Put(l, b, constRef);
+                    ((dynamic)_Storage).Put(l, b, constRef);
                 }
                 return true;
-            }, glyphs.Length);
+            }, glyphs.Count);
 
-            workload.Finish(threadCount);
+            workload.Finish(_ThreadCount);
         }
 
-        public void Rearrange(int width, int height, Remap[] remapping)
+        public void Rearrange(int width, int height, Span<Remap> remapping)
         {
             for (int i = 0; i < remapping.Length; ++i)
             {
-                layout[remapping[i].Index].rect.x = remapping[i].target.x;
-                layout[remapping[i].index].rect.y = remapping[i].target.y;
+                var glyphBox = _Layout[remapping[i].Index];
+
+                glyphBox = _Layout[remapping[i].Index] with { Rect = glyphBox.Rect with { X = remapping[i].Target.X, Y = remapping[i].Target.Y } };
+
+                _Layout[remapping[i].Index] = glyphBox;
             }
 
-            var newStorage = (AtlasStorage)Activator.CreateInstance(typeof(AtlasStorage),
-                args: new object[] { storage, width, height, remapping });
-            storage = newStorage;
+            _Storage = new TStorage();
+            _Storage.Init(_Storage, width, height, remapping);
         }
 
         public void Resize(int width, int height)
         {
-            var newStorage = (AtlasStorage)Activator.CreateInstance(typeof(AtlasStorage),
-                args: new object[] { storage, width, height });
-            storage = newStorage;
+            _Storage.Init(_Storage, width, height);
         }
 
         public void SetAttributes(GeneratorAttributes attributes)
         {
-            this.attributes = attributes;
+            _Attributes = attributes;
         }
 
         public void SetThreadCount(int threadCount)
         {
-            this.threadCount = threadCount;
+            _ThreadCount = threadCount;
         }
     }
 

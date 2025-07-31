@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,11 +7,9 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Atlas
 {
-
     /// Represents a set of Unicode codepoints (characters)
-    class Charset
+    public partial class Charset : IEnumerable<uint>
     {
-
         /// The set of the 95 printable ASCII characters
         public readonly static Charset ASCII = CreateAsciiCharset();
 
@@ -30,30 +29,12 @@ namespace SharpMSDF.Atlas
         public int Size() => _Codepoints.Count;
         public bool Empty() => _Codepoints.Count == 0;
 
-        //std::set<unicode_t>::const_iterator begin()
-        //{
+        IEnumerator<uint> IEnumerable<uint>.GetEnumerator() => _Codepoints.GetEnumerator();
 
-        //}
-        //std::set<unicode_t>::const_iterator end()
-        //{
+        IEnumerator IEnumerable.GetEnumerator() => _Codepoints.GetEnumerator();
 
-        //}
-
-        /// Load character set from a text file with compliant syntax
-        public bool Load(string filename, bool disableCharLiterals = false)
-        {
-            
-        }
-        /// Parse character set from a string with compliant syntax
-        public bool Parse(string str, int strLength, bool disableCharLiterals = false)
-        {
-
-        }
-
-        private SortedSet<uint> _Codepoints;
+        private SortedSet<uint> _Codepoints = [];
 
     };
-
-}
 
 }
