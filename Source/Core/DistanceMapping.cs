@@ -1,4 +1,6 @@
 ﻿
+using System;
+
 namespace SharpMSDF.Core
 {
     public class DistanceMapping
@@ -27,10 +29,11 @@ namespace SharpMSDF.Core
 
         public DistanceMapping(DoubleRange range)
         {
-            double extent = range.Upper - range.Lower;
-            scale = extent != 0.0 ? 2.0 / extent : 1.0;
-            translate = -scale * (range.Lower + range.Upper) * 0.5;
+            //double extent = range.Upper - range.Lower;
+            scale = 1 / (range.Upper - range.Lower);
+            translate = -range.Lower;
         }
+        //scale(1/(range.upper-range.lower)), translate(-range.lower)
 
         private DistanceMapping(double scale, double translate)
         {
@@ -38,18 +41,20 @@ namespace SharpMSDF.Core
             this.translate = translate;
         }
 
-        public double this[double d] => d * scale + translate;
+        public double this[double d] => scale * ( d + translate);
 
         public double this[Delta d] => d.Value * scale;
 
         public DistanceMapping Inverse()
         {
-            return new DistanceMapping(scale != 0.0 ? 1.0 / scale : 1.0, -translate / scale);
+            return new DistanceMapping(1.0 / scale, -scale * translate);
         }
 
         public static DistanceMapping Inverse(DoubleRange range)
         {
-            return new DistanceMapping(range).Inverse();
+            double rangeWidth = range.Upper - range.Lower;
+            return new DistanceMapping(rangeWidth, range.Lower / (rangeWidth!=0 ? rangeWidth : 1.0));
+
         }
     }
 

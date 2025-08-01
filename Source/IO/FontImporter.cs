@@ -134,7 +134,6 @@ namespace SharpMSDF.IO
             }
 
             int advUnits = typeface.GetAdvanceWidthFromGlyphIndex(glyphIndex);
-            advance = advUnits / 64;
 
             //const int padding = 0;      // pixels
 
@@ -148,29 +147,24 @@ namespace SharpMSDF.IO
             idealHeight = (float)hUnits / 64f; // + padding * 2;
 
             // 3) Compute offset so that glyph’s bottom‐left maps to (padding, padding)
-            double offsetX = -bounds.XMin / 64; // + padding
-            double offsetY = -bounds.YMin / 64; // + padding
 
             Shape shape = new Shape();
             GlyphPointF[] pts = glyph.GlyphPoints;
             ushort[] ends = glyph.EndPoints;
             int start = 0;
 
-            double divW = 1.0;
-            double divH = 1.0;
+            double div = 1.0;
             if (scaling == FontCoordinateScaling.EmNormalized)
-            {
-                divW = typeface.UnitsPerEm;
-                divH = typeface.UnitsPerEm;
-            }
+                div = typeface.UnitsPerEm;
             else if (scaling == FontCoordinateScaling.LegacyNormalized)
-            {
-                divW = 64;
-                divH = 64;
-            }
+                div = 64;
+            advance = advUnits / div;
+
+            double offsetX = -bounds.XMin /*/ div*/; // + padding
+            double offsetY = -bounds.YMin /*/ div*/; // + padding
 
             (double X, double Y) ToShapeSpace(GlyphPointF p)
-                => ((p.X + offsetX )/ divW, (p.Y + offsetY) / divH);
+                => ((p.X + offsetX )/ div, (p.Y + offsetY) / div);
 
             foreach (ushort end in ends)
             {

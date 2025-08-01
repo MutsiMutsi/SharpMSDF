@@ -25,22 +25,22 @@
         }
 
         /// <summary>
-        /// Configuration of whether to use an algorithm that computes the exact Shape distance at the positions of suspected artifacts.
+        /// Configuration of whether to use an algorithm that computes the exact _shape distance at the positions of suspected artifacts.
         /// </summary>
         public enum ConfigDistanceCheckMode
         {
-            /// Never computes exact Shape distance.
+            /// Never computes exact _shape distance.
             DO_NOT_CHECK_DISTANCE,
-            /// Only computes exact Shape distance at edges.
+            /// Only computes exact _shape distance at edges.
             CHECK_DISTANCE_AT_EDGE,
-            /// Computes and compares the exact Shape distance for each suspected artifact.
+            /// Computes and compares the exact _shape distance for each suspected artifact.
             ALWAYS_CHECK_DISTANCE
         }
 
-        public OpMode Mode;
-        public ConfigDistanceCheckMode DistanceCheckMode;
-        public double MinDeviationRatio;
-        public double MinImproveRatio;
+        public OpMode Mode = OpMode.EDGE_PRIORITY;
+        public ConfigDistanceCheckMode DistanceCheckMode = ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE;
+        public double MinDeviationRatio = DefaultMinDeviationRatio;
+        public double MinImproveRatio = DefaultMinImproveRatio;
 
         /// <summary>
         /// An optional Buffer to avoid dynamic allocation. Must have at least as many bytes as the MSDF has pixels.
@@ -84,6 +84,8 @@
         {
             OverlapSupport = overlapSupport;
         }
+
+        public static implicit operator GeneratorConfig(MSDFGeneratorConfig cfg) => new GeneratorConfig(cfg.OverlapSupport);
     }
 
     /// <summary>
