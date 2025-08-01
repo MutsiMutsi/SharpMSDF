@@ -67,7 +67,7 @@ namespace SharpMSDF.Atlas
                     var glyphBitmap = new BitmapRef<T>(span, w, h, N);
                     GEN_FN(glyphBitmap, glyph, threadAttributes[threadNo]);
                     var constRef = new BitmapConstRef<T>(glyphBitmap);
-                    ((dynamic)_Storage).Put(l, b, constRef);
+                    _Storage.Put(l, b, constRef);
                 }
                 return true;
             }, glyphs.Count);

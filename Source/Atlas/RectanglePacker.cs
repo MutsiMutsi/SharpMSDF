@@ -97,6 +97,7 @@ namespace SharpMSDF.Atlas
                 rect = rectangles[remainingRects[bestRect]];
                 rect.X = _Spaces[bestSpace].X;
                 rect.Y = _Spaces[bestSpace].Y;
+                rectangles[remainingRects[bestRect]] = rect;
                 SplitSpace(bestSpace, rect.Width, rect.Height);
                 RemoveFromUnorderedVector(ref remainingRects, bestRect);
             }
@@ -266,7 +267,7 @@ namespace SharpMSDF.Atlas
                     c.Height = r.Height + spacing;
                     return c;
                 })
-                .ToArray();
+                .ToList();
 
             // Compute total area (without spacing)
             int totalArea = rectangles.Sum(r => r.Width * r.Height);
@@ -279,21 +280,30 @@ namespace SharpMSDF.Atlas
 
             while (selector.Next(out int w, out int h))
             {
-                //TODO : WORK ON THIS
                 var packer = new RectanglePacker(w + spacing, h + spacing);
-                //if (packer.Pack(copy) == 0)
+                if (packer.Pack(copy) == 0)
                 {
                     // success: record dims and copy placements back
                     dimensions = (w, h);
                     for (int i = 0; i < rectangles.Count; i++)
                     {
-                        //if (rectangles[i] is Rectangle rect)
-                            //CopyRectanglePlacement(ref rect, copy[i]);
-
+                        if (rectangles is List<Rectangle> rectanglesNormal && copy[i] is Rectangle copyr)
+                        {
+                            var tmpRect = rectanglesNormal[i];
+                            CopyRectanglePlacement(ref tmpRect, copyr);
+                            rectanglesNormal[i] = tmpRect;
+                        }
+                        else if (rectangles is List<OrientedRectangle> rectanglesOriented && copy[i] is OrientedRectangle copyo)
+                        {
+                            var tmpRect = rectanglesOriented[i];
+                            CopyRectanglePlacement(ref tmpRect, copyo);
+                            rectanglesOriented[i] = tmpRect;
+                        }
+                        else throw new("Not suitable types between Rectangle and OrientedRectangle (should not happen)");
                     }
                     selector.Decrement();
                 }
-                //else
+                else
                 {
                     selector.Increment();
                 }

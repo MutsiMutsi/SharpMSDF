@@ -1,5 +1,6 @@
 ﻿using SharpMSDF.Core;
 using SharpMSDF.IO;
+using System.Data.SqlTypes;
 using Typography.OpenFont;
 using SimpleTrueShapeDistanceFinder = SharpMSDF.Core.ShapeDistanceFinder<SharpMSDF.Core.SimpleContourCombiner<SharpMSDF.Core.TrueDistanceSelector, double>, SharpMSDF.Core.TrueDistanceSelector, double>;
 
@@ -21,7 +22,7 @@ namespace SharpMSDF.Atlas
         private Shape.Bounds _bounds;
         private double _advance;
         private ushort _index;
-        public Shape Shape;
+        private Shape _shape;
 
         private struct BoxData
         {
@@ -36,47 +37,52 @@ namespace SharpMSDF.Atlas
 
         public GlyphGeometry() { }
 
-        public bool Load(Typeface font, double geometryScale, uint codepoint, bool preprocessGeometry = true)
+        public bool Load(ref GlyphGeometry self, Typeface font, double geometryScale, uint codepoint, bool preprocessGeometry = true)
         {
+            self = this;
             if (font == null)
                 return false;
 
-            Shape = FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out _, out _, ref _advance);
+            _shape = FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out _, out _, ref _advance);
 
-            if (Shape.Validate())
+            if (_shape.Validate())
             {
 
+                _index = font.GetGlyphIndex((int)codepoint);
                 _geometryScale = geometryScale;
-                _codepoint = 0;
+                _codepoint = codepoint;
                 _advance *= geometryScale;
 
 
-                Shape.Normalize();
-                _bounds = Shape.GetBounds();
+                _shape.Normalize();
+                _bounds = _shape.GetBounds();
 
                 {
                     var outerPoint = new Vector2(
                         _bounds.l - (_bounds.r - _bounds.l) - 1,
                         _bounds.b - (_bounds.t - _bounds.b) - 1
                     );
-                    if (SimpleTrueShapeDistanceFinder.OneShotDistance(Shape, outerPoint) > 0)
+                    if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
                     {
-                        foreach (var contour in Shape.Contours)
+                        foreach (var contour in _shape.Contours)
                             contour.Reverse();
                     }
                 }
 
+                self = this;
                 return true;
             }
+
+            self = this;
             return false;
         }
 
         public void EdgeColoring(Action<Shape, double, ulong> coloringFunc, double angleThreshold, ulong seed)
         {
-            coloringFunc?.Invoke(Shape, angleThreshold, seed);
+            coloringFunc?.Invoke(_shape, angleThreshold, seed);
         }
 
-        public void WrapBox(in GlyphAttributes glyphAttributes)
+        public void WrapBox(ref GlyphGeometry self, in GlyphAttributes glyphAttributes)
         {
             double scale = glyphAttributes.Scale * _geometryScale;
             DoubleRange range = glyphAttributes.Range / _geometryScale;
@@ -93,7 +99,7 @@ namespace SharpMSDF.Atlas
                 double t = _bounds.t - range.Lower;
 
                 if (glyphAttributes.MiterLimit > 0)
-                    Shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
+                    _shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
 
                 l -= fullPadding.L; b -= fullPadding.B;
                 r += fullPadding.R; t += fullPadding.T;
@@ -134,11 +140,12 @@ namespace SharpMSDF.Atlas
                 _box.Rect.Height = 0;
                 _box.Translate = new Vector2();
             }
+            self = this;
         }
 
-        public void WrapBox(double scale, double range, double miterLimit, bool pxAlignOrigin)
+        public void WrapBox(ref GlyphGeometry self, double scale, double range, double miterLimit, bool pxAlignOrigin)
         {
-            WrapBox(new GlyphAttributes
+            WrapBox(ref self, new GlyphAttributes
             {
                 Scale = scale,
                 Range = new DoubleRange(range),
@@ -148,9 +155,9 @@ namespace SharpMSDF.Atlas
             });
         }
 
-        public void WrapBox(double scale, double range, double miterLimit, bool pxAlignOriginX, bool pxAlignOriginY)
+        public void WrapBox(ref GlyphGeometry self, double scale, double range, double miterLimit, bool pxAlignOriginX, bool pxAlignOriginY)
         {
-            WrapBox(new GlyphAttributes
+            WrapBox(ref self, new GlyphAttributes
             {
                 Scale = scale,
                 Range = new DoubleRange(range),
@@ -160,7 +167,7 @@ namespace SharpMSDF.Atlas
             });
         }
 
-        public void FrameBox(in GlyphAttributes glyphAttributes, int width, int height, double? fixedX, double? fixedY)
+        public void FrameBox(ref GlyphGeometry self, in GlyphAttributes glyphAttributes, int width, int height, double? fixedX, double? fixedY)
         {
             double scale = glyphAttributes.Scale * _geometryScale;
             DoubleRange range = glyphAttributes.Range / _geometryScale;
@@ -184,7 +191,7 @@ namespace SharpMSDF.Atlas
                 double t = _bounds.t - range.Lower;
 
                 if (glyphAttributes.MiterLimit > 0)
-                    Shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
+                    _shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
 
                 l -= fullPadding.L; b -= fullPadding.B;
                 r += fullPadding.R; t += fullPadding.T;
@@ -219,11 +226,12 @@ namespace SharpMSDF.Atlas
             }
 
             _box.OuterPadding = glyphAttributes.Scale * glyphAttributes.OuterPadding;
+            self = this;
         }
 
-        public void FrameBox(double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOrigin)
+        public void FrameBox(ref GlyphGeometry self, double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOrigin)
         {
-            FrameBox(new GlyphAttributes
+            FrameBox(ref self, new GlyphAttributes
             {
                 Scale = scale,
                 Range = new DoubleRange(range),
@@ -233,9 +241,9 @@ namespace SharpMSDF.Atlas
             }, width, height, fixedX, fixedY);
         }
 
-        public void FrameBox(double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOriginX, bool pxAlignOriginY)
+        public void FrameBox(ref GlyphGeometry self, double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOriginX, bool pxAlignOriginY)
         {
-            FrameBox(new GlyphAttributes
+            FrameBox(ref self, new GlyphAttributes
             {
                 Scale = scale,
                 Range = new DoubleRange(range),
@@ -245,15 +253,17 @@ namespace SharpMSDF.Atlas
             }, width, height, fixedX, fixedY);
         }
 
-        public void PlaceBox(int x, int y)
+        public GlyphGeometry PlaceBox(int x, int y)
         {
             _box.Rect.X = x;
             _box.Rect.Y = y;
+            return this;
         }
 
-        public void SetBoxRect(Rectangle rect)
+        public GlyphGeometry SetBoxRect(Rectangle rect)
         {
             _box.Rect = rect;
+            return this;
         }
 
         public ushort GetIndex() => _index;
@@ -271,8 +281,8 @@ namespace SharpMSDF.Atlas
         //}
 
         public double GetGeometryScale() => _geometryScale;
-        //public ref Shape GetShape() => Shape;
-        //public ref Shape.Bounds GetShapeBounds() => ref _bounds;
+        //public ref _shape GetShape() => _shape;
+        //public ref _shape.Bounds GetShapeBounds() => ref _bounds;
         public double GetAdvance() => _advance;
         public Rectangle GetBoxRect() => _box.Rect;
         public void GetBoxRect(out int x, out int y, out int w, out int h)
@@ -321,7 +331,9 @@ namespace SharpMSDF.Atlas
                 l = b = r = t = 0;
         }
 
-        public bool IsWhitespace() => Shape.Contours.Count == 0;
+        public bool IsWhitespace() => _shape.Contours.Count == 0;
+
+        public Shape GetShape() => _shape;
 
         public static implicit operator GlyphBox(GlyphGeometry geometry)
         {

@@ -31,10 +31,19 @@ namespace SharpMSDF.Atlas
             scaleMaximizationTolerance = 0.001;
         }
 
-        public int Pack(List<GlyphGeometry> glyphs)
-            => Pack(glyphs, glyphs.Count);
-
-        public int Pack(List<GlyphGeometry> glyphs, int count)
+        public unsafe int Pack(ref List<GlyphGeometry> glyphs)
+        {
+            GlyphGeometry[] glyphsArr = new GlyphGeometry[glyphs.Count];
+            glyphs.CopyTo(glyphsArr, 0);
+            int packResult = -1;
+            fixed (GlyphGeometry* glyphsPtr = glyphsArr)
+            {
+                packResult = Pack(glyphsPtr, glyphsArr.Length);
+                glyphs = new(glyphsArr);
+            }
+            return packResult;
+        }
+        public unsafe int Pack(GlyphGeometry* glyphs, int count)
         {
             double initialScale = scale > 0 ? scale : minScale;
             if (initialScale > 0)
@@ -123,102 +132,106 @@ namespace SharpMSDF.Atlas
         // Internals
         //------------------------------------------------------------------------------
 
-        int TryPack(List<GlyphGeometry> glyphs, int count, DimensionsConstraint dc, ref int w, ref int h, double s)
+        unsafe int TryPack(GlyphGeometry* glyphs, int count, DimensionsConstraint dc, ref int w, ref int h, double s)
         {
             // Prepare boxes
             var rects = new List<Rectangle>(count);
-            var rectGlyphs = new List<GlyphGeometry>(count);
-            var attribs = new GlyphGeometry.GlyphAttributes
+            fixed (GlyphGeometry** rectGlyphs = new GlyphGeometry*[count])
             {
-                Scale = s,
-                Range = unitRange + pxRange / s,
-                InnerPadding = innerUnitPadding + innerPxPadding / s,
-                OuterPadding = outerUnitPadding + outerPxPadding / s,
-                MiterLimit = miterLimit,
-                PxAlignOriginX = pxAlignOriginX,
-                PxAlignOriginY = pxAlignOriginY
-            };
-
-            for (int i = 0; i < count; i++)
-            {
-                var g = glyphs[i];
-                if (!g.IsWhitespace())
+                int rectGlyphsI = 0;
+                var attribs = new GlyphGeometry.GlyphAttributes
                 {
-                    g.WrapBox(attribs);
-                    g.GetBoxSize(out int rw, out int rh);
-                    if (rw > 0 && rh > 0)
+                    Scale = s,
+                    Range = unitRange + pxRange / s,
+                    InnerPadding = innerUnitPadding + innerPxPadding / s,
+                    OuterPadding = outerUnitPadding + outerPxPadding / s,
+                    MiterLimit = miterLimit,
+                    PxAlignOriginX = pxAlignOriginX,
+                    PxAlignOriginY = pxAlignOriginY
+                };
+
+                for (int i = 0; i < count; i++)
+                {
+                    var g = glyphs[i];
+                    if (!g.IsWhitespace())
                     {
-                        rects.Add(new(0, 0, rw, rh));
-                        rectGlyphs.Add(g);
+                        g.WrapBox(ref g, attribs);
+                        g.GetBoxSize(out int rw, out int rh);
+                        if (rw > 0 && rh > 0)
+                        {
+                            rects.Add(new(0, 0, rw, rh));
+                            rectGlyphs[rectGlyphsI++] = &glyphs[i];
+                        }
+                        glyphs[i] = g;
                     }
                 }
-            }
 
-            if (rects.Count == 0)
-            {
-                if (w < 0 || h < 0) { w = h = 0; }
-                return 0;
-            }
-
-            // Pack
-            if (w < 0 || h < 0)
-            {
-                (int pw, int ph) = dc switch
+                if (rects.Count == 0)
                 {
-                    DimensionsConstraint.PowerOfTwoSquares => RectanglePacker.PackWithSelector<SquarePowerOfTwoSizeSelector,Rectangle>(rects, spacing),
-                    DimensionsConstraint.PowerOfTwoRectangle => RectanglePacker.PackWithSelector<PowerOfTwoSizeSelector,Rectangle>(rects, spacing),
-                    DimensionsConstraint.MultipleOfFourSquare => RectanglePacker.PackWithSelector <SquareSizeSelector, Rectangle> (rects, spacing),
-                    DimensionsConstraint.EvenSquare => RectanglePacker.PackWithSelector<SquareSizeSelector,Rectangle>(rects, spacing),
-                    _ /*Square*/                            => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing)
-                };
-                if (pw <= 0 || ph <= 0) return -1;
-                w = pw; h = ph;
-            }
-            else
-            {
-                int result = RectanglePacker.Pack(rects, w, h, spacing);
-                if (result != 0) return result;
-            }
+                    if (w < 0 || h < 0) { w = h = 0; }
+                    return 0;
+                }
 
-            // Place
-            for (int i = 0; i < rects.Count; i++)
-            {
-                var box = rects[i];
-                // flip Y origin
-                rectGlyphs[i].PlaceBox(box.X, h - (box.Y + box.Height));
-            }
+                // Pack
+                if (w < 0 || h < 0)
+                {
+                    (int pw, int ph) = dc switch
+                    {
+                        DimensionsConstraint.PowerOfTwoSquares => RectanglePacker.PackWithSelector<SquarePowerOfTwoSizeSelector, Rectangle>(rects, spacing),
+                        DimensionsConstraint.PowerOfTwoRectangle => RectanglePacker.PackWithSelector<PowerOfTwoSizeSelector, Rectangle>(rects, spacing),
+                        DimensionsConstraint.MultipleOfFourSquare => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing),
+                        DimensionsConstraint.EvenSquare => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing),
+                        _ /*Square*/                            => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing)
+                    };
+                    if (pw <= 0 || ph <= 0) return -1;
+                    w = pw; h = ph;
+                }
+                else
+                {
+                    int result = RectanglePacker.Pack(rects, w, h, spacing);
+                    if (result != 0) return result;
+                }
 
-            return 0;
+                // Place
+                for (int i = 0; i < rects.Count; i++)
+                {
+                    var box = rects[i];
+                    // flip Y origin
+                    *rectGlyphs[i] = (*rectGlyphs[i]).PlaceBox(box.X, h - (box.Y + box.Height));
+                }
+
+                return 0;
+
+            }
         }
 
-        double PackAndScale(List<GlyphGeometry> glyphs, int count)
+        unsafe double PackAndScale(GlyphGeometry* glyphs, int count)
         {
             bool success;
             int w = width, h = height;
             double lo = 1, hi = 1;
 
-            success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, 1) != 0;
-            if (success == false)
+            if (success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, 1) == 0)
             {
-                // find lower bound
-                while (lo > 1e-32 && !(success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, lo) != 0))
-                    hi = lo *= 0.5;
+                // find upper bound
+                while (hi < 1e32 && (success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, hi = 2*lo) == 0))
+                    lo = hi;
             }
             else
             {
-                // find upper bound
-                while (hi < 1e32 && (success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, hi *= 2) != 0))
-                    lo = hi;
+                // find lower bound
+                while (lo > 1e-32 && !(success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, lo = .5*hi) == 0))
+                    hi = lo;
             }
 
-            if (Math.Abs(lo - hi) < double.Epsilon)
+            if (lo == hi)
                 return 0;
 
             // binary search
             while (lo / hi < 1 - scaleMaximizationTolerance)
             {
                 double mid = 0.5 * (lo + hi);
-                if (TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, mid) != 0)
+                if (success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, mid) == 0)
                     lo = mid;
                 else
                     hi = mid;

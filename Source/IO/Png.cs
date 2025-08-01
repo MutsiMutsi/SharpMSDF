@@ -51,5 +51,48 @@ namespace SharpMSDF.IO
             }
             return true;
         }
+
+        public static bool SavePng(BitmapConstRef<byte> bitmap, string filename)
+        {
+            Span<byte> pixels = new byte[4 * bitmap.SubWidth * bitmap.SubHeight];
+            int idx = 0;
+            for (int y = bitmap.SubHeight - 1; y >= 0; y--)
+            {
+                for (int x = 0; x < bitmap.SubWidth; x++)
+                {
+                    switch (bitmap.N)
+                    {
+                        case 1:
+                            pixels[idx++] = bitmap[x, y];
+                            pixels[idx++] = bitmap[x, y];
+                            pixels[idx++] = bitmap[x, y];
+                            pixels[idx++] = 255;
+                            break;
+                        case 3:
+                            pixels[idx++] = bitmap[x, y, 0];
+                            pixels[idx++] = bitmap[x, y, 1];
+                            pixels[idx++] = bitmap[x, y, 2];
+                            pixels[idx++] = 255;
+                            break;
+                        case 4:
+                            pixels[idx++] = bitmap[x, y, 0];
+                            pixels[idx++] = bitmap[x, y, 1];
+                            pixels[idx++] = bitmap[x, y, 2];
+                            pixels[idx++] = bitmap[x, y, 3];
+                            break;
+                    }
+                }
+            }
+            try
+            {
+                using (var file = File.OpenWrite(filename))
+                    MinimalPngEncoder.EncodeToStream(pixels, bitmap.SubWidth, bitmap.SubHeight, file);
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
     }
 }
