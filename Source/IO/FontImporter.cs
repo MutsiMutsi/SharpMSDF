@@ -7,7 +7,7 @@ using static System.Formats.Asn1.AsnWriter;
 using NumericsVector2 = System.Numerics.Vector2;
 using static System.Net.Mime.MediaTypeNames;
 using SharpMSDF.Core;
-using SharpMSDF.Font;
+using Typography.TextLayout;
 
 namespace SharpMSDF.IO
 {
@@ -45,7 +45,7 @@ namespace SharpMSDF.IO
                 case FontCoordinateScaling.None:
                     return 1;
                 case FontCoordinateScaling.EmNormalized:
-                    return 1.0/ (face.UnitsPerEm!=0? face.UnitsPerEm: 1.0);
+                    return 1.0 / (face.UnitsPerEm!=0? face.UnitsPerEm: 1.0);
                 case FontCoordinateScaling.LegacyNormalized:
                     return 1.0 / 64.0;
             }
@@ -153,18 +153,14 @@ namespace SharpMSDF.IO
             ushort[] ends = glyph.EndPoints;
             int start = 0;
 
-            double div = 1.0;
-            if (scaling == FontCoordinateScaling.EmNormalized)
-                div = typeface.UnitsPerEm;
-            else if (scaling == FontCoordinateScaling.LegacyNormalized)
-                div = 64;
-            advance = advUnits / div;
+            double scale = GetFontCoordinateScale(typeface, scaling);
+            advance = advUnits * scale;
 
-            double offsetX = -bounds.XMin /*/ div*/; // + padding
-            double offsetY = -bounds.YMin /*/ div*/; // + padding
+            //double offsetX = bounds.XMin /*/ div*/; // + padding
+            //double offsetY = -bounds.YMin /*/ div*/; // + padding
 
             (double X, double Y) ToShapeSpace(GlyphPointF p)
-                => ((p.X + offsetX )/ div, (p.Y + offsetY) / div);
+                => ((p.X) * scale, (p.Y) * scale);
 
             foreach (ushort end in ends)
             {
@@ -283,13 +279,22 @@ namespace SharpMSDF.IO
             new (pt.P.X / scale, pt.P.Y / scale);
 
         public static bool GetKerning(out double kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
-        {
-            kerning = font.GetKernDistance(font.GetGlyphIndex((int)unicode1), font.GetGlyphIndex((int)unicode2));
-            if (kerning == 0)
-            {
-                return false;
-            }
-            kerning *= GetFontCoordinateScale(font, scaling);
+        {   
+            // Set text
+            ReadOnlySpan<char> chars = [(char)unicode1, (char)unicode2];
+            font.Layout.Layout(chars, 0, 2);
+            var some = font.Layout.GetUnscaledGlyphPlanIter();
+            //foreach (var some_ in some)
+            //{
+            //    kerning = some_.;
+
+            //}
+            //if (kerning == 0)
+            //{
+            //    return false;
+            //}
+            //kerning *= GetFontCoordinateScale(font, scaling);
+            kerning = 1.0;
             return true;
         }
 
