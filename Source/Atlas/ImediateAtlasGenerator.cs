@@ -3,7 +3,7 @@ using SharpMSDF.Core;
 
 namespace SharpMSDF.Atlas
 {
-    public class ImmediateAtlasGenerator<T, TStorage> 
+    public class ImmediateAtlasGenerator<T, TStorage>  : AtlasGenerator
         where T : struct
         where TStorage : AtlasStorage, new()
     {
@@ -12,7 +12,7 @@ namespace SharpMSDF.Atlas
         public TStorage Storage => _Storage;
         public List<GlyphBox> Layout => _Layout;
 
-        private TStorage _Storage;
+        private TStorage _Storage = new();
         private readonly List<GlyphBox> _Layout = new();
         private List<T> _GlyphBuffer = new();
         private List<byte> _ErrorCorrectionBuffer = new();
@@ -23,18 +23,17 @@ namespace SharpMSDF.Atlas
         {
             N = n;
             GEN_FN = genFn;
-            _Storage = new();
+            _Storage.Init(0, 0, n); // just to store 'n'
         }
 
         public ImmediateAtlasGenerator(int width, int height, int n, GeneratorFunction<T> genFn)
         {
             N = n;
             GEN_FN = genFn;
-            _Storage = new();
             _Storage.Init(width, height, n);
         }
 
-        public void Generate(List<GlyphGeometry> glyphs)
+        public override void Generate(List<GlyphGeometry> glyphs)
         {
             int maxBoxArea = 0;
             for (int i = 0; i < glyphs.Count; ++i)
@@ -75,9 +74,9 @@ namespace SharpMSDF.Atlas
             workload.Finish(_ThreadCount);
         }
 
-        public void Rearrange(int width, int height, Span<Remap> remapping)
+        public override void Rearrange(int width, int height, List<Remap> remapping, int start = 0)
         {
-            for (int i = 0; i < remapping.Length; ++i)
+            for (int i = start; i < remapping.Count - start; ++i)
             {
                 var glyphBox = _Layout[remapping[i].Index];
 
@@ -87,12 +86,14 @@ namespace SharpMSDF.Atlas
             }
 
             _Storage = new TStorage();
-            _Storage.Init(_Storage, width, height, remapping);
+            _Storage.Init(_Storage, width, height, remapping.ToArray());
         }
 
-        public void Resize(int width, int height)
+        public override void Resize(int width, int height)
         {
-            _Storage.Init(_Storage, width, height);
+            var oldStorage = _Storage;
+            _Storage = new();
+            _Storage.Init(oldStorage, width, height);
         }
 
         public void SetAttributes(GeneratorAttributes attributes)

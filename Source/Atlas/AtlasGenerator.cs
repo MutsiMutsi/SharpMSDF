@@ -15,20 +15,15 @@ namespace SharpMSDF.Atlas
     /// </summary>
     public abstract class AtlasGenerator
     {
-        public AtlasGenerator(int width, int height, GeneratorAttributes attributes)
-        {
-            Resize(width, height);
-        }
-
         /// <summary>
         /// Generates bitmap representation for the supplied array of glyphs.
         /// </summary>
-        public abstract void Generate(Span<GlyphGeometry> glyphs, int count);
+        public abstract void Generate(List<GlyphGeometry> glyphs);
 
         /// <summary>
         /// Resizes the atlas and rearranges the generated pixels according to the remapping array.
         /// </summary>
-        public abstract void Rearrange(int width, int height, Span<Remap> remapping, int count);
+        public abstract void Rearrange(int width, int height, List<Remap> remapping, int start = 0);
 
         /// <summary>
         /// Resizes the atlas and keeps the generated pixels in place.

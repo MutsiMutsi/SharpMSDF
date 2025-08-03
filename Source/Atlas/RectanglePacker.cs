@@ -52,13 +52,13 @@ namespace SharpMSDF.Atlas
             }
         }
         /// Packs the rectangle array, returns how many didn't fit (0 on success)
-        public int Pack<TRect>(List<TRect> rectangles)
+        public int Pack<TRect>(List<TRect> rectangles, int start = 0)
             where TRect : IRectangle
         {
-            Span<int> remainingRects = stackalloc int[rectangles.Count];
+            Span<int> remainingRects = stackalloc int[rectangles.Count - start];
 
-            for (int i = 0; i < rectangles.Count; ++i)
-                remainingRects[i] = i;
+            for (int i = 0; i < rectangles.Count - start; ++i)
+                remainingRects[i] = i + start;
             while (remainingRects.Length > 0)
             {
                 int bestFit = WORST_FIT;
@@ -115,7 +115,7 @@ namespace SharpMSDF.Atlas
                 int bestSpace = -1;
                 int bestRect = -1;
                 bool bestRotated = false;
-                Rectangle rect;
+               OrientedRectangle rect;
                 for (int i = 0; i < spaces.Count; ++i)
                 {
                     Rectangle space = spaces[i];
@@ -169,6 +169,7 @@ namespace SharpMSDF.Atlas
                 rect = rectangles[remainingRects[bestRect]];
                 rect.X = spaces[bestSpace].X;
                 rect.Y = spaces[bestSpace].Y;
+                rectangles[remainingRects[bestRect]] = rect;
                 if (bestRotated)
                     SplitSpace(bestSpace, rect.Height, rect.Width);
                 else

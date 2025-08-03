@@ -7,7 +7,6 @@ using static System.Formats.Asn1.AsnWriter;
 using NumericsVector2 = System.Numerics.Vector2;
 using static System.Net.Mime.MediaTypeNames;
 using SharpMSDF.Core;
-using Typography.TextLayout;
 
 namespace SharpMSDF.IO
 {

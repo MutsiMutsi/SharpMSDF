@@ -82,7 +82,7 @@ namespace SharpMSDF.Atlas
             coloringFunc?.Invoke(_shape, angleThreshold, seed);
         }
 
-        public void WrapBox(ref GlyphGeometry self, in GlyphAttributes glyphAttributes)
+        public void WrapBox(ref GlyphGeometry self, GlyphAttributes glyphAttributes)
         {
             double scale = glyphAttributes.Scale * _geometryScale;
             DoubleRange range = glyphAttributes.Range / _geometryScale;

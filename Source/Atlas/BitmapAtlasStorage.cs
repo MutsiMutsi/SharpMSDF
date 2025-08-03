@@ -33,7 +33,6 @@ namespace SharpMSDF.Atlas
             if (orig is BitmapAtlasStorage<T> origStorage)
             {
                 Bitmap = new Bitmap<T>(width, height, origStorage.Bitmap.N);
-                Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
                 Blitter.Blit(new BitmapRef<T>(Bitmap), origStorage.Bitmap, 0, 0, 0, 0, Math.Min(width, origStorage.Bitmap.Width), Math.Min(height, origStorage.Bitmap.Height));
             }
 

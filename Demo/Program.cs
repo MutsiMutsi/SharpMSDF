@@ -11,6 +11,7 @@ using SharpMSDF.Atlas;
 using System.Reflection.Emit;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Buffers;
 
 namespace SharpMSDF.Demo
 {
@@ -21,7 +22,8 @@ namespace SharpMSDF.Demo
             Console.WriteLine((uint)'&');
             var font = FontImporter.LoadFont("micross.ttf");
             OneGlyphGen(font);
-            ImediateAtlasGen(font);
+            //ImediateAtlasGen(font);
+            OnDemandAtlasGen(font);
         }
 
         private static void ImediateAtlasGen(Typeface font)
@@ -79,6 +81,55 @@ namespace SharpMSDF.Demo
             Png.SavePng(generator.Storage.Bitmap, "atlas.png");
         }
 
+        private static void OnDemandAtlasGen(Typeface font)
+        {
+            const double pixelRange = 2.0;
+            const double glyphScale = 32.0;
+            const double miterLimit = 1.0;
+            const double maxCornerAngle = 3.0;
+
+            List<GlyphGeometry> glyphs = new(font.GlyphCount);
+            FontGeometry fontGeometry = new(glyphs);
+
+            DynamicAtlas<ImmediateAtlasGenerator<float, BitmapAtlasStorage<byte>>, TightAtlasPacker> myDynamicAtlas = new();
+            myDynamicAtlas.Generator = new(3, GlyphGenerators.Msdf);
+            myDynamicAtlas.Packer = new();
+
+            Console.WriteLine("Dynamic Atlas Generator Demo");
+            while (true)
+            {
+                Console.WriteLine("Enter char(s) to be added to Atlas (Make sure each chars are different):");
+                ReadOnlySpan<char> chars = Console.ReadLine();
+
+                Charset charset = new Charset();
+
+                int prevEndMark = glyphs.Count;
+
+                for (int c = 0; c < chars.Length; ++c)
+                    charset.Add(chars[c]);
+                fontGeometry.LoadCharset(font, 1.0, charset);
+
+                for (int g = prevEndMark; g <  glyphs.Count; ++g)
+                { 
+                    var glyph = glyphs[g];
+                    // Preprocess windings
+                    glyph.GetShape().OrientContours();
+                    // Apply MSDF edge coloring. See edge-coloring.h for other coloring strategies.
+                    glyph.EdgeColoring(EdgeColoring.EdgeColoringSimple, maxCornerAngle, 0);
+                    // Finalize glyph box size based on the parameters
+                    glyph.WrapBox(ref glyph, new() { Scale = glyphScale, Range = new( pixelRange / glyphScale), MiterLimit = miterLimit });
+                    
+                    glyphs[g] = glyph;
+                }
+
+                var changeFlags = myDynamicAtlas.Add(glyphs[prevEndMark..]);
+
+                var bitmap = myDynamicAtlas.Generator.Storage.Bitmap;
+
+                Png.SavePng(bitmap, "dynamic-atlas.png");
+            }
+        }
+
         private static void OneGlyphGen(Typeface font)
         {
             var shape = FontImporter.LoadGlyph(font, '&', FontCoordinateScaling.EmNormalized);
@@ -124,5 +175,6 @@ namespace SharpMSDF.Demo
             Render.RenderSdf(rast, msdf, pxrange);
             Png.SavePng(rast, "rasterized.png");
         }
+    
     }
 }
