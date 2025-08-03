@@ -19,10 +19,9 @@ namespace SharpMSDF.Demo
     {
         static void Main(string[] args)
         {
-            Console.WriteLine((uint)'&');
-            var font = FontImporter.LoadFont("micross.ttf");
+            var font = FontImporter.LoadFont("Kingthings_Petrock.ttf");
             OneGlyphGen(font);
-            //ImediateAtlasGen(font);
+            ImediateAtlasGen(font);
             OnDemandAtlasGen(font);
         }
 
@@ -42,7 +41,7 @@ namespace SharpMSDF.Demo
             for (var g = 0; g < glyphs.Count; g++)
             {
                 glyphs[g].GetShape().OrientContours();
-                glyphs[g].EdgeColoring(EdgeColoring.EdgeColoringSimple, maxCornerAngle, 0);
+                glyphs[g].EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
             }
             // TightAtlasPacker class computes the layout of the atlas.
             TightAtlasPacker packer = new();
@@ -83,9 +82,9 @@ namespace SharpMSDF.Demo
 
         private static void OnDemandAtlasGen(Typeface font)
         {
-            const double pixelRange = 2.0;
-            const double glyphScale = 32.0;
-            const double miterLimit = 1.0;
+            const double pixelRange = 6.0;
+            const double glyphScale = 64.0;
+            const double miterLimit = 2.0;
             const double maxCornerAngle = 3.0;
 
             List<GlyphGeometry> glyphs = new(font.GlyphCount);
@@ -115,7 +114,7 @@ namespace SharpMSDF.Demo
                     // Preprocess windings
                     glyph.GetShape().OrientContours();
                     // Apply MSDF edge coloring. See edge-coloring.h for other coloring strategies.
-                    glyph.EdgeColoring(EdgeColoring.EdgeColoringSimple, maxCornerAngle, 0);
+                    glyph.EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
                     // Finalize glyph box size based on the parameters
                     glyph.WrapBox(ref glyph, new() { Scale = glyphScale, Range = new( pixelRange / glyphScale), MiterLimit = miterLimit });
                     
@@ -132,14 +131,14 @@ namespace SharpMSDF.Demo
 
         private static void OneGlyphGen(Typeface font)
         {
-            var shape = FontImporter.LoadGlyph(font, '&', FontCoordinateScaling.EmNormalized);
+            var shape = FontImporter.LoadGlyph(font, '#', FontCoordinateScaling.EmNormalized);
             int size = 64;
             var msdf = new Bitmap<float>(size, size, 3);
 
             shape.OrientContours(); // This will orient the windings
             shape.Normalize();
 
-            EdgeColoring.EdgeColoringSimple(shape, 3.0); // Angle Thereshold
+            EdgeColorings.InkTrap(shape, 3.0); // Angle Thereshold
 
             double l=0.0, b = 0.0, r = 0.0, t = 0.0;
             shape.Bound(ref l, ref b, ref r, ref t);
