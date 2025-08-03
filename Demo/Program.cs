@@ -19,9 +19,9 @@ namespace SharpMSDF.Demo
         static void Main(string[] args)
         {
             Console.WriteLine((uint)'&');
-            var font = FontImporter.LoadFont("Kingthings_Petrock.ttf");
-            ImediateAtlasGen(font);
+            var font = FontImporter.LoadFont("micross.ttf");
             OneGlyphGen(font);
+            ImediateAtlasGen(font);
         }
 
         private static void ImediateAtlasGen(Typeface font)
@@ -52,6 +52,7 @@ namespace SharpMSDF.Demo
             // setPixelRange or setUnitRange
             packer.SetPixelRange(new DoubleRange(6.0));
             packer.SetMiterLimit(1.0);
+            packer.SetOriginPixelAlignment(false, true);
             // Compute atlas layout - pack glyphs
             packer.Pack(ref glyphs);
             // Get final atlas dimensions

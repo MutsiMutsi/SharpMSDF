@@ -279,22 +279,17 @@ namespace SharpMSDF.IO
             new (pt.P.X / scale, pt.P.Y / scale);
 
         public static bool GetKerning(out double kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
-        {   
-            // Set text
-            ReadOnlySpan<char> chars = [(char)unicode1, (char)unicode2];
-            font.Layout.Layout(chars, 0, 2);
-            var some = font.Layout.GetUnscaledGlyphPlanIter();
-            //foreach (var some_ in some)
-            //{
-            //    kerning = some_.;
+        {
+            kerning = 0;
+            if (font.KernTable == null)
+                return false;
 
-            //}
-            //if (kerning == 0)
-            //{
-            //    return false;
-            //}
-            //kerning *= GetFontCoordinateScale(font, scaling);
-            kerning = 1.0;
+            kerning = font.GetKernDistance(font.GetGlyphIndex((int)unicode1), font.GetGlyphIndex((int)unicode2));
+            
+            if (kerning == 0)
+                return false;
+
+            kerning *= GetFontCoordinateScale(font, scaling);
             return true;
         }
 
