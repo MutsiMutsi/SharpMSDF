@@ -14,7 +14,11 @@ namespace SharpMSDF.Core
             Scale = scale;
             Translate = translate;
         }
-        /// Converts the Shape coordinate to pixel coordinate.
+
+        /// Converts the shape coordinate to pixel coordinate.
+        public Vector2 Project(Vector2 coord) => Scale * (coord + Translate);
+        /// Converts the pixel coordinate to shape coordinate.
+        public Vector2 Unproject(Vector2 coord) => coord / Scale - Translate;
         /// Converts the vector to pixel coordinate space.
         public Vector2 ProjectVector(Vector2 vector) => Scale * vector;
         /// Converts the vector from pixel coordinate space.

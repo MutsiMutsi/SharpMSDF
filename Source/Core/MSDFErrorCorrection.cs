@@ -216,7 +216,7 @@ namespace SharpMSDF.Core
                     // If color changes -> it's a corner
                     if ((commonColor & (commonColor - 1)) == 0)
                     {
-                        var p = Transformation.Projection.ProjectVector(edge.Point(0));
+                        var p = Transformation.Projection.Project(edge.Point(0));
                         if (shape.InverseYAxis)
                             p.Y = Stencil.SubHeight - p.Y;
 
@@ -670,7 +670,7 @@ namespace SharpMSDF.Core
                         if ((Stencil[x, row] & (byte)Flags.Error) != 0)
                             continue;
                         ReadOnlySpan<float> c = sdf.Slice(x, row);
-                        shapeDistanceChecker.ShapeCoord = Transformation.Projection.UnprojectVector(new(x + .5, y + .5));
+                        shapeDistanceChecker.ShapeCoord = Transformation.Projection.Unproject(new(x + .5, y + .5));
                         shapeDistanceChecker.SdfCoord = new Vector2(x + .5, row + .5);
                         fixed (float* msd = c)
                         {

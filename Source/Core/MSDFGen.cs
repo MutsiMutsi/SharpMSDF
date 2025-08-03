@@ -89,7 +89,7 @@ namespace SharpMSDF.Core
                     {
                         int x = rightToLeft ? output.SubWidth - col - 1 : col;
                         // unproject into Shape‐space
-                        var p = transformation.Projection.UnprojectVector(new Vector2(x + .5f, y + .5f));
+                        var p = transformation.Projection.Unproject(new Vector2(x + .5f, y + .5f));
                         // get the signed‐distance
                         TDistance dist = distanceFinder.Distance(p);
                         // write into the pixel Buffer
