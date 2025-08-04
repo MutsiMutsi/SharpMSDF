@@ -207,10 +207,10 @@ namespace SharpMSDF.Core
                 if (contour.Edges.Count == 0)
                     continue;
 
-                var prevEdge = contour.Edges[^1].Segment;
-                foreach (var edgeHolder in contour.Edges)
+                var prevEdge = contour.Edges[^1];
+                foreach (var edgeSegment in contour.Edges)
                 {
-                    var edge = edgeHolder.Segment;
+                    var edge = edgeSegment;
                     int commonColor = (int)(prevEdge.Color & edge.Color);
 
                     // If color changes -> it's a corner
@@ -366,9 +366,9 @@ namespace SharpMSDF.Core
 
             foreach (var contour in shape.Contours)
             {
-                foreach (var edgeHolder in contour.Edges)
+                foreach (var edgeSegment in contour.Edges)
                 {
-                    var edge = edgeHolder.Segment;
+                    var edge = edgeSegment;
 
                     Vector2 p0 = edge.Point(0);
                     Vector2 p1 = edge.Point(1);

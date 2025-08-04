@@ -54,28 +54,28 @@ namespace SharpMSDF.Core
                 var contour = Contours[i];
                 if (contour.Edges.Count > 0)
                 {
-                    var corner = contour.Edges[^1].Segment.Point(1);
+                    var corner = contour.Edges[^1].Point(1);
                     for (int j = 0; j < contour.Edges.Count; j++)
                     {
                         var edge = contour.Edges[j];
-                        if (edge == null || edge.Segment.Point(0) != corner)
+                        if (edge == null || edge.Point(0) != corner)
                             return false;
-                        corner = edge.Segment.Point(1);
+                        corner = edge.Point(1);
                     }
                 }
             }
             return true;
         }
 
-        private static void DeconvergeEdge(EdgeHolder edgeHolder, int param, Vector2 vector)
+        private static void DeconvergeEdge(EdgeSegment edgeSegment, int param, Vector2 vector)
         {
-            switch (edgeHolder.Segment.Type())
+            switch (edgeSegment.Type())
             {
                 case QuadraticSegment.EDGE_TYPE:
-                    edgeHolder = ((QuadraticSegment)edgeHolder.Get()).ConvertToCubic();
+                    edgeSegment = ((QuadraticSegment)edgeSegment).ConvertToCubic();
                     goto case CubicSegment.EDGE_TYPE;
                 case CubicSegment.EDGE_TYPE:
-                    Span<Vector2> p = ((CubicSegment)edgeHolder).P;
+                    Span<Vector2> p = ((CubicSegment)edgeSegment).P;
                     switch (param)
                     {
                         case 0:
@@ -99,25 +99,25 @@ namespace SharpMSDF.Core
                 var contour = Contours[c];
                 if (contour.Edges.Count == 1)
                 {
-                    contour.Edges[0].Segment.SplitInThirds(out var part0, out var part1, out var part2);
+                    contour.Edges[0].SplitInThirds(out var part0, out var part1, out var part2);
                     contour.Edges.Clear();
-                    contour.Edges.Add(new EdgeHolder(part0));
-                    contour.Edges.Add(new EdgeHolder(part1));
-                    contour.Edges.Add(new EdgeHolder(part2));
+                    contour.Edges.Add(part0);
+                    contour.Edges.Add(part1);
+                    contour.Edges.Add(part2);
                 }
                 else
                 {
-                    EdgeHolder prevEdge = contour.Edges[^1];
+                    EdgeSegment prevEdge = contour.Edges[^1];
                     for (int i = 0; i < contour.Edges.Count; i++)
                     {
-                        EdgeHolder edge = contour.Edges[i];
-                        Vector2 prevDir = prevEdge.Segment.Direction(1).Normalize();
-                        Vector2 curDir = edge.Segment.Direction(0).Normalize();
+                        EdgeSegment edge = contour.Edges[i];
+                        Vector2 prevDir = prevEdge.Direction(1).Normalize();
+                        Vector2 curDir = edge.Direction(0).Normalize();
                         if (Vector2.Dot(prevDir, curDir) < MSDFGEN_CORNER_DOT_EPSILON-1)
                         {
                             double factor = 1.11111111111111111 * Math.Sqrt(1 - Math.Pow(MSDFGEN_CORNER_DOT_EPSILON - 1, 2)) / (MSDFGEN_CORNER_DOT_EPSILON- 1);
                             var axis = factor * (curDir - prevDir).Normalize();
-                            if (Vector2.Cross(prevEdge.Segment.DirectionChange(1), edge.Segment.Direction(0)) + Vector2.Cross(edge.Segment.DirectionChange(0), prevEdge.Segment.Direction(1)) < 0)
+                            if (Vector2.Cross(prevEdge.DirectionChange(1), edge.Direction(0)) + Vector2.Cross(edge.DirectionChange(0), prevEdge.Direction(1)) < 0)
                                 axis = -axis;
                             DeconvergeEdge(prevEdge, 1, axis.GetOrthogonal(true));
                             DeconvergeEdge(edge, 0, axis.GetOrthogonal(false));
@@ -184,7 +184,7 @@ namespace SharpMSDF.Core
                 for (int j = 0; j < contour.Edges.Count; j++)
                 {
                     var edge = contour.Edges[j];
-                    int n = edge.Segment.ScanlineIntersections(x, dy, y);
+                    int n = edge.ScanlineIntersections(x, dy, y);
                     for (int k = 0; k < n; ++k)
                         intersections.Add(new Scanline.Intersection { X = x[k], Direction = dy[k] });
                 }
@@ -224,12 +224,12 @@ namespace SharpMSDF.Core
             {
                 if (orientations[c] == 0 && Contours[c].Edges.Count > 0)
                 {
-                    double y0 = Contours[c].Edges[0].Segment.Point(0).Y;
+                    double y0 = Contours[c].Edges[0].Point(0).Y;
                     double y1 = y0;
                     for (int e = 0; e < Contours[c].Edges.Count && y0 == y1; e++)
-                            y1 = Contours[c].Edges[e].Segment.Point(1).Y;
+                            y1 = Contours[c].Edges[e].Point(1).Y;
                     for (int e = 0; e < Contours[c].Edges.Count && y0 == y1;  e++)
-                            y1 = Contours[c].Edges[e].Segment.Point(_Ratio).Y;
+                            y1 = Contours[c].Edges[e].Point(_Ratio).Y;
 
                     double y = Arithmetic.Mix(y0, y1, _Ratio);
 
@@ -238,7 +238,7 @@ namespace SharpMSDF.Core
                         for (int ei = 0; ei < Contours[ci].Edges.Count; ei++)
                         {
                             var edge = Contours[ci].Edges[ei];
-                            int n = edge.Segment.ScanlineIntersections(x, dy, y);
+                            int n = edge.ScanlineIntersections(x, dy, y);
                             for (int k = 0; k < n; ++k)
                                 intersections.Add(new Intersection { X = x[k], Direction = dy[k], ContourIndex = ci });
                         }

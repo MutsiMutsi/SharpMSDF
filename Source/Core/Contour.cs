@@ -8,19 +8,19 @@ namespace SharpMSDF.Core
     public class Contour
     {
 
-        public List<EdgeHolder> Edges = new List<EdgeHolder>();
+        public List<EdgeSegment> Edges = new List<EdgeSegment>();
 
         private static double Shoelace(Vector2 a, Vector2 b)
         {
             return (b.X - a.X) * (a.Y + b.Y);
         }
 
-        public void AddEdge(EdgeHolder edge)
+        public void AddEdge(EdgeSegment edge)
         {
             Edges.Add(edge);
         }
 
-        public EdgeHolder AddEdge()
+        public EdgeSegment AddEdge()
         {
             Edges.Add(null!); // Will be assigned later
             return Edges[^1];
@@ -37,7 +37,7 @@ namespace SharpMSDF.Core
         public void Bound(ref double l, ref double b, ref double r, ref double t)
         {
             for (int e  = 0; e < Edges.Count; e++)
-                Edges[e].Segment.Bound(ref l, ref b, ref r, ref t);
+                Edges[e].Bound(ref l, ref b, ref r, ref t);
         }
 
         public void BoundMiters(ref double l, ref double b, ref double r, ref double t, double border, double miterLimit, int polarity)
@@ -45,21 +45,21 @@ namespace SharpMSDF.Core
             if (Edges.Count == 0)
                 return;
 
-            Vector2 prevDir = Edges[^1].Segment.Direction(1).Normalize(true);
+            Vector2 prevDir = Edges[^1].Direction(1).Normalize(true);
 
             for (int e = 0; e < Edges.Count; e++)
             {
-                Vector2 dir = -Edges[e].Segment.Direction(0).Normalize(true);
+                Vector2 dir = -Edges[e].Direction(0).Normalize(true);
                 if (polarity * Vector2.Cross(prevDir, dir) >= 0)
                 {
                     double miterLength = miterLimit;
                     double q = 0.5 * (1 - Vector2.Dot(prevDir, dir));
                     if (q > 0)
                         miterLength = Math.Min(1 / Math.Sqrt(q), miterLimit);
-                    Vector2 miter = Edges[e].Segment.Point(0) + border * miterLength * (prevDir + dir).Normalize(true);
+                    Vector2 miter = Edges[e].Point(0) + border * miterLength * (prevDir + dir).Normalize(true);
                     BoundPoint(ref l, ref b, ref r, ref t, miter);
                 }
-                prevDir = Edges[e].Segment.Direction(1).Normalize(true);
+                prevDir = Edges[e].Direction(1).Normalize(true);
             }
         }
 
@@ -72,19 +72,19 @@ namespace SharpMSDF.Core
 
             if (Edges.Count == 1)
             {
-                Vector2 a = Edges[0].Segment.Point(0);
-                Vector2 b = Edges[0].Segment.Point(1.0 / 3.0);
-                Vector2 c = Edges[0].Segment.Point(2.0 / 3.0);
+                Vector2 a = Edges[0].Point(0);
+                Vector2 b = Edges[0].Point(1.0 / 3.0);
+                Vector2 c = Edges[0].Point(2.0 / 3.0);
                 total += Shoelace(a, b);
                 total += Shoelace(b, c);
                 total += Shoelace(c, a);
             }
             else if (Edges.Count == 2)
             {
-                Vector2 a = Edges[0].Segment.Point(0);
-                Vector2 b = Edges[0].Segment.Point(0.5);
-                Vector2 c = Edges[1].Segment.Point(0);
-                Vector2 d = Edges[1].Segment.Point(0.5);
+                Vector2 a = Edges[0].Point(0);
+                Vector2 b = Edges[0].Point(0.5);
+                Vector2 c = Edges[1].Point(0);
+                Vector2 d = Edges[1].Point(0.5);
                 total += Shoelace(a, b);
                 total += Shoelace(b, c);
                 total += Shoelace(c, d);
@@ -92,10 +92,10 @@ namespace SharpMSDF.Core
             }
             else
             {
-                Vector2 prev = Edges[^1].Segment.Point(0);
+                Vector2 prev = Edges[^1].Point(0);
                 for (int e = 0; e < Edges.Count; e++)
                 {
-                    Vector2 cur = Edges[e].Segment.Point(0);
+                    Vector2 cur = Edges[e].Point(0);
                     total += Shoelace(prev, cur);
                     prev = cur;
                 }
@@ -112,7 +112,7 @@ namespace SharpMSDF.Core
                 (Edges[i], Edges[count - i - 1]) = (Edges[count - i - 1], Edges[i]);
             }
             for (int e=0; e < Edges.Count; e++)
-                Edges[e].Segment.Reverse();
+                Edges[e].Reverse();
         }
     }
 }
