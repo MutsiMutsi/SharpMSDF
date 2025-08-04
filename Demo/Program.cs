@@ -116,7 +116,7 @@ namespace SharpMSDF.Demo
                     // Apply MSDF edge coloring. See EdgeColorings for other coloring strategies.
                     glyph.EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
                     // Finalize glyph box scale based on the parameters
-                    glyph.WrapBox(ref glyph, new() { Scale = glyphScale, Range = new( pixelRange / glyphScale), MiterLimit = miterLimit });
+                    glyph.WrapBox(new() { Scale = glyphScale, Range = new( pixelRange / glyphScale), MiterLimit = miterLimit });
                     
                     glyphs[g] = glyph;
                 }
