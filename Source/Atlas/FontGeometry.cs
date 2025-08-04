@@ -79,7 +79,7 @@ namespace SharpMSDF.Atlas
             for (ushort index = rangeStart; index < rangeEnd; ++index)
             {
                 var glyph = new GlyphGeometry();
-                if (glyph.Load(ref glyph, font, geometryScale, index, preprocessGeometry))
+                if (glyph.Load(font, geometryScale, index, preprocessGeometry))
                 {
                     AddGlyph(glyph);
                     ++loaded;
@@ -105,7 +105,7 @@ namespace SharpMSDF.Atlas
             foreach (uint index in glyphset)
             {
                 var glyph = new GlyphGeometry();
-                if (glyph.Load(ref glyph, face, geometryScale, index, preprocessGeometry))
+                if (glyph.Load(face, geometryScale, index, preprocessGeometry))
                 {
                     AddGlyph(glyph);
                     ++loaded;
@@ -131,7 +131,7 @@ namespace SharpMSDF.Atlas
             foreach (uint cp in charset)
             {
                 var glyph = new GlyphGeometry();
-                if (glyph.Load(ref glyph, face, geometryScale, cp, preprocessGeometry))
+                if (glyph.Load(face, geometryScale, cp, preprocessGeometry))
                 {
                     AddGlyph(glyph);
                     ++loaded;

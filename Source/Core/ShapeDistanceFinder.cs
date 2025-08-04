@@ -41,14 +41,14 @@ namespace SharpMSDF.Core
                         var edgeSelector = ContourCombiner.EdgeSelector(c);
 
                         EdgeSegment prevEdge = contour.Edges.Count >= 2
-                            ? contour.Edges[contour.Edges.Count - 2].Segment
-                            : contour.Edges[0].Segment;
+                            ? contour.Edges[contour.Edges.Count - 2]
+                            : contour.Edges[0];
 
-                        EdgeSegment curEdge = contour.Edges[^1].Segment;
+                        EdgeSegment curEdge = contour.Edges[^1];
 
                         for (int i = 0; i < contour.Edges.Count; i++)
                         {
-                            EdgeSegment nextEdge = contour.Edges[i].Segment;
+                            EdgeSegment nextEdge = contour.Edges[i];
                             edgeSelector.AddEdge(edgeCache++, prevEdge, curEdge, nextEdge);
                             //ShapeEdgeCache[edgeCacheIndex++] = temp;
                             prevEdge = curEdge;
@@ -76,14 +76,14 @@ namespace SharpMSDF.Core
                 var edgeSelector = combiner.EdgeSelector(i);
 
                 EdgeSegment prevEdge = contour.Edges.Count >= 2
-                    ? contour.Edges[contour.Edges.Count - 2].Segment
-                    : contour.Edges[0].Segment;
+                    ? contour.Edges[contour.Edges.Count - 2]
+                    : contour.Edges[0];
 
-                EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1].Segment;
+                EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
 
-                foreach (var edgeHolder in contour.Edges)
+                foreach (var edgeSegment in contour.Edges)
                 {
-                    EdgeSegment nextEdge = edgeHolder.Segment;
+                    EdgeSegment nextEdge = edgeSegment;
                     var dummyCache = new EdgeCache(); // or default!
                     edgeSelector.AddEdge(&dummyCache, prevEdge, curEdge, nextEdge);
 

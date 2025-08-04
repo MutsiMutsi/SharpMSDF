@@ -1,6 +1,5 @@
 ﻿using SharpMSDF.Core;
 using SharpMSDF.IO;
-using System.Data.SqlTypes;
 using Typography.OpenFont;
 using SimpleTrueShapeDistanceFinder = SharpMSDF.Core.ShapeDistanceFinder<SharpMSDF.Core.SimpleContourCombiner<SharpMSDF.Core.TrueDistanceSelector, double>, SharpMSDF.Core.TrueDistanceSelector, double>;
 
@@ -37,9 +36,8 @@ namespace SharpMSDF.Atlas
 
         public GlyphGeometry() { }
 
-        public bool Load(ref GlyphGeometry self, Typeface font, double geometryScale, uint codepoint, bool preprocessGeometry = true)
+        public bool Load(Typeface font, double geometryScale, uint codepoint, bool preprocessGeometry = true)
         {
-            self = this;
             if (font == null)
                 return false;
 
@@ -68,12 +66,8 @@ namespace SharpMSDF.Atlas
                             contour.Reverse();
                     }
                 }
-
-                self = this;
                 return true;
             }
-
-            self = this;
             return false;
         }
 
@@ -82,7 +76,7 @@ namespace SharpMSDF.Atlas
             coloringFunc?.Invoke(_shape, angleThreshold, seed);
         }
 
-        public void WrapBox(ref GlyphGeometry self, GlyphAttributes glyphAttributes)
+        public void WrapBox(GlyphAttributes glyphAttributes)
         {
             double scale = glyphAttributes.Scale * _geometryScale;
             DoubleRange range = glyphAttributes.Range / _geometryScale;
@@ -140,34 +134,9 @@ namespace SharpMSDF.Atlas
                 _box.Rect.Height = 0;
                 _box.Translate = new Vector2();
             }
-            self = this;
         }
 
-        public void WrapBox(ref GlyphGeometry self, double scale, double range, double miterLimit, bool pxAlignOrigin)
-        {
-            WrapBox(ref self, new GlyphAttributes
-            {
-                Scale = scale,
-                Range = new DoubleRange(range),
-                MiterLimit = miterLimit,
-                PxAlignOriginX = pxAlignOrigin,
-                PxAlignOriginY = pxAlignOrigin
-            });
-        }
-
-        public void WrapBox(ref GlyphGeometry self, double scale, double range, double miterLimit, bool pxAlignOriginX, bool pxAlignOriginY)
-        {
-            WrapBox(ref self, new GlyphAttributes
-            {
-                Scale = scale,
-                Range = new DoubleRange(range),
-                MiterLimit = miterLimit,
-                PxAlignOriginX = pxAlignOriginX,
-                PxAlignOriginY = pxAlignOriginY
-            });
-        }
-
-        public void FrameBox(ref GlyphGeometry self, in GlyphAttributes glyphAttributes, int width, int height, double? fixedX, double? fixedY)
+        public void FrameBox(in GlyphAttributes glyphAttributes, int width, int height, double? fixedX, double? fixedY)
         {
             double scale = glyphAttributes.Scale * _geometryScale;
             DoubleRange range = glyphAttributes.Range / _geometryScale;
@@ -226,12 +195,11 @@ namespace SharpMSDF.Atlas
             }
 
             _box.OuterPadding = glyphAttributes.Scale * glyphAttributes.OuterPadding;
-            self = this;
         }
 
-        public void FrameBox(ref GlyphGeometry self, double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOrigin)
+        public void FrameBox(double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOrigin)
         {
-            FrameBox(ref self, new GlyphAttributes
+            FrameBox(new GlyphAttributes
             {
                 Scale = scale,
                 Range = new DoubleRange(range),
@@ -241,9 +209,9 @@ namespace SharpMSDF.Atlas
             }, width, height, fixedX, fixedY);
         }
 
-        public void FrameBox(ref GlyphGeometry self, double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOriginX, bool pxAlignOriginY)
+        public void FrameBox(double scale, double range, double miterLimit, int width, int height, double? fixedX, double? fixedY, bool pxAlignOriginX, bool pxAlignOriginY)
         {
-            FrameBox(ref self, new GlyphAttributes
+            FrameBox(new GlyphAttributes
             {
                 Scale = scale,
                 Range = new DoubleRange(range),
