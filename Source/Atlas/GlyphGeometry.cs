@@ -1,6 +1,5 @@
 ﻿using SharpMSDF.Core;
 using SharpMSDF.IO;
-using System.Data.SqlTypes;
 using Typography.OpenFont;
 using SimpleTrueShapeDistanceFinder = SharpMSDF.Core.ShapeDistanceFinder<SharpMSDF.Core.SimpleContourCombiner<SharpMSDF.Core.TrueDistanceSelector, double>, SharpMSDF.Core.TrueDistanceSelector, double>;
 

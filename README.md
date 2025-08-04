@@ -144,14 +144,19 @@ myDynamicAtlas.Packer = new();
         // Apply MSDF edge coloring. See EdgeColorings for other coloring strategies.
         glyph.EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
         // Finalize glyph box scale based on the parameters
-        glyph.WrapBox(ref glyph, new() { Scale = glyphScale, Range = new(pixelRange / glyphScale), MiterLimit = miterLimit });
+        glyph.WrapBox(new() { Scale = glyphScale, Range = new(pixelRange / glyphScale), MiterLimit = miterLimit });
 
         glyphs[g] = glyph;
     }
 
     // Add glyphs to atlas - invokes the underlying atlas generator
     // Adding multiple glyphs at once may improve packing efficiency.
-    var changeFlags = myDynamicAtlas.Add(glyphs[prevEndMark..]);
+    var newGlyphs = glyphs[prevEndMark..];
+	var changeFlags = myDynamicAtlas.Add(newGlyphs);
+	for (int i = 0; i < newGlyphs.Count; ++i)
+	{
+		glyphs[prevEndMark + i] = newGlyphs[i];
+	}
     if ((changeFlags & ChangeFlag.Resized) != 0)
     {
         // Recreate texture slot with new size when resized for example
