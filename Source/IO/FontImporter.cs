@@ -124,13 +124,13 @@ namespace SharpMSDF.IO
         {
             //const double scale = 1.0 / 64;
             ushort glyphIndex = (ushort)typeface.GetGlyphIndex((int)unicode);
-            var glyph = typeface.GetGlyph(glyphIndex);
-            if (glyph == null)
-            {
-                advance = 0;
-                idealWidth = idealHeight = 0;
-                return new Shape();
-            }
+			if (glyphIndex == 0)
+			{
+				advance = 0;
+				idealWidth = idealHeight = 0;
+				return new Shape();
+			}
+			var glyph = typeface.GetGlyph(glyphIndex);
 
             int advUnits = typeface.GetAdvanceWidthFromGlyphIndex(glyphIndex);
 
