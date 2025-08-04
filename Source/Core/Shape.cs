@@ -6,7 +6,7 @@ using Typography.OpenFont.MathGlyphs;
 namespace SharpMSDF.Core
 {
 
-    public class Shape
+    public struct Shape
     {
         // Threshold of the dot product of adjacent edge directions to be considered convergent.
         public const double MSDFGEN_CORNER_DOT_EPSILON = .000001;
@@ -204,10 +204,15 @@ namespace SharpMSDF.Core
         }
 
         readonly static double _Ratio = 0.5 * (Math.Sqrt(5) - 1);
-        /// <summary>
-        /// Assumes its contours are unoriented (even-odd fill rule). Attempts to orient them to conform to the non-zero winding rule.
-        /// </summary>
-        public void OrientContours()
+
+		public Shape()
+		{
+		}
+
+		/// <summary>
+		/// Assumes its contours are unoriented (even-odd fill rule). Attempts to orient them to conform to the non-zero winding rule.
+		/// </summary>
+		public void OrientContours()
         {
             var orientations = new int[Contours.Count];
             var intersections = new List<Intersection>();

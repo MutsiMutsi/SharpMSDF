@@ -81,7 +81,7 @@ namespace SharpMSDF.Core
 
             /// Returns true if the combined results of the tests performed on the median value m interpolated at t indicate an artifact.
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool Evaluate(double t, float m, int flags)
+            new public bool Evaluate(double t, float m, int flags)
             {
                 if ((flags & CLASSIFIER_FLAG_CANDIDATE) != 0)
                 {

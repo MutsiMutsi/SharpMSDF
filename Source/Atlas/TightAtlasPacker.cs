@@ -216,7 +216,7 @@ namespace SharpMSDF.Atlas
                     var g = glyphs[i];
                     if (!g.IsWhitespace())
                     {
-                        g.WrapBox(ref g, attribs);
+                        g.WrapBox(attribs);
                         g.GetBoxSize(out int rw, out int rh);
                         if (rw > 0 && rh > 0)
                         {

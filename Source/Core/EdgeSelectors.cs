@@ -366,7 +366,7 @@ namespace SharpMSDF.Core
 
     public class MultiAndTrueDistanceSelector : MultiDistanceSelector, IDistanceSelector<MultiAndTrueDistance>
     {
-        public MultiAndTrueDistance Distance()
+        new public MultiAndTrueDistance Distance()
         {
             var md = base.Distance();
             var td = base.TrueDistance();
