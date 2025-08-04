@@ -121,9 +121,12 @@ namespace SharpMSDF.Demo
                     glyphs[g] = glyph;
                 }
 
-                // Add glyphs to atlas - invokes the underlying atlas generator
-                // Adding multiple glyphs at once may improve packing efficiency.
-                var changeFlags = myDynamicAtlas.Add(glyphs[prevEndMark..]);
+				var newGlyphs = glyphs[prevEndMark..];
+				var changeFlags = myDynamicAtlas.Add(newGlyphs);
+				for (int i = 0; i < newGlyphs.Count; ++i)
+				{
+					glyphs[prevEndMark + i] = newGlyphs[i];
+				}
 
                 var bitmap = myDynamicAtlas.Generator.Storage.Bitmap;
 
