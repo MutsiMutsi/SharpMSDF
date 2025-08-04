@@ -7,8 +7,9 @@ using Typography.OpenFont;
 
 namespace SharpMSDF.Atlas
 {
-
-    //TODO: sus 
+    /// <summary>
+    /// Represents the geometry of all glyphs of a given font or font variant
+    /// </summary
     public class FontGeometry
     {
         public class GlyphRange
@@ -66,6 +67,9 @@ namespace SharpMSDF.Atlas
             rangeStart = rangeEnd = (ushort)glyphs.Count;
         }
 
+        /// <summary>
+        /// Loads the consecutive range of glyphs between rangeStart (inclusive) and rangeEnd (exclusive), returns the number of successfully loaded glyphs
+        /// </summary>
         public int LoadGlyphRange(Typeface font, double fontScale, ushort rangeStart, uint rangeEnd, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == this.rangeEnd && LoadMetrics(font, fontScale)))
@@ -89,6 +93,9 @@ namespace SharpMSDF.Atlas
             return loaded;
         }
 
+        /// <summary>
+        /// Loads all glyphs in a glyphset (Charset elements are glyph indices), returns the number of successfully loaded glyphs
+        /// </summary>
         public int LoadGlyphset(Typeface face, double fontScale, Charset glyphset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
@@ -112,6 +119,9 @@ namespace SharpMSDF.Atlas
             return loaded;
         }
 
+        /// <summary>
+        /// Loads all glyphs in a charset (Charset elements are Unicode codepoints), returns the number of successfully loaded glyphs
+        /// </summary>
         public int LoadCharset(Typeface face, double fontScale, Charset charset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
@@ -135,6 +145,9 @@ namespace SharpMSDF.Atlas
             return loaded;
         }
 
+        ///<summary>
+        /// Only loads font metrics and geometry scale from font
+        ///</summary>
         public bool LoadMetrics(Typeface font, double fontScale)
         {
             if (!FontImporter.GetFontMetrics(out this.metrics, font, FontCoordinateScaling.None))
@@ -155,6 +168,9 @@ namespace SharpMSDF.Atlas
             return true;
         }
 
+        /// <summary>
+        /// Adds a loaded glyph
+        /// </summary>
         public bool AddGlyph(GlyphGeometry glyph)
         {
             if (glyphs.Count != rangeEnd)
@@ -169,6 +185,9 @@ namespace SharpMSDF.Atlas
             return true;
         }
 
+        /// <summary>
+        /// Loads kerning pairs for all glyphs that are currently present, returns the number of loaded kerning pairs
+        /// </summary>
         public int LoadKerning(Typeface font)
         {
             int loaded = 0;
@@ -191,6 +210,9 @@ namespace SharpMSDF.Atlas
             return loaded;
         }
 
+        /// <summary>
+        /// Sets a name to be associated with the font
+        /// </summary>
         public void SetName(string? name)
         {
             this.name = name;
@@ -199,18 +221,30 @@ namespace SharpMSDF.Atlas
         public double GeometryScale => geometryScale;
         public FontMetrics Metrics => metrics;
         public GlyphIdentifierType PreferredIdentifierType => preferredIdentifierType;
+        /// <summary>
+        /// Returns the list of all glyphs
+        /// </summary>
         public GlyphRange GetGlyphs() => new(glyphs, rangeStart, rangeEnd);
 
+        /// <summary>
+        /// Finds a glyph by glyph index, returns null if not found
+        /// </summary>
         public GlyphGeometry? GetGlyph(ushort index)
         {
             return glyphsByIndex.TryGetValue(index, out var i) ? glyphs[i] : null;
         }
 
+        /// <summary>
+        /// Finds a glyph by glyph Unicode codepoint, returns null if not found
+        /// </summary>
         public GlyphGeometry? GetGlyph(uint codepoint)
         {
             return glyphsByCodepoint.TryGetValue(codepoint, out var i) ? glyphs[i] : null;
         }
 
+        /// <summary>
+        /// Outputs the advance between two glyphs with kerning taken into consideration, returns false on failure
+        /// </summary>
         public bool GetAdvance(out double advance, ushort index1, ushort index2)
         {
             advance = 0;
@@ -225,6 +259,9 @@ namespace SharpMSDF.Atlas
             return true;
         }
 
+        /// <summary>
+        /// Outputs the advance between two glyphs with kerning taken into consideration, returns false on failure
+        /// </summary>
         public bool GetAdvance(out double advance, uint codepoint1, uint codepoint2)
         {
             advance = 0;

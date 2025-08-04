@@ -9,6 +9,9 @@ namespace SharpMSDF.IO
 {
     public class Png
     {
+        /// <summary>
+        /// Saves the bitmap as a PNG file.
+        /// </summary>
         public static bool SavePng(BitmapConstRef<float> bitmap, string filename)
         {
             Span<byte> pixels = new byte[4 * bitmap.SubWidth * bitmap.SubHeight];

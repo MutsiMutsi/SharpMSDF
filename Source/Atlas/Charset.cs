@@ -21,9 +21,13 @@ namespace SharpMSDF.Atlas
             return ascii;
         }
 
+        /// <summary>
         /// Adds a codepoint
+        /// </summary>
         public void Add(uint cp) => _Codepoints.Add(cp);
+        /// <summary>
         /// Removes a codepoint
+        /// </summary>
         public void Remove(uint cp) => _Codepoints.Remove(cp);
 
         public int Size() => _Codepoints.Count;

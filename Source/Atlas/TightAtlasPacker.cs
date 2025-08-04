@@ -31,6 +31,9 @@ namespace SharpMSDF.Atlas
             scaleMaximizationTolerance = 0.001;
         }
 
+        /// <summary>
+        /// Computes the layout for the array of glyphs. Returns 0 on success
+        /// </summary>
         public unsafe int Pack(ref List<GlyphGeometry> glyphs)
         {
             GlyphGeometry[] glyphsArr = new GlyphGeometry[glyphs.Count];
@@ -43,6 +46,10 @@ namespace SharpMSDF.Atlas
             }
             return packResult;
         }
+
+        /// <summary>
+        /// Computes the layout for the array of glyphs. Returns 0 on success
+        /// </summary>
         public unsafe int Pack(GlyphGeometry* glyphs, int count)
         {
             double initialScale = scale > 0 ? scale : minScale;
@@ -64,67 +71,121 @@ namespace SharpMSDF.Atlas
             return 0;
         }
 
+        /// <summary>
+        /// Sets the atlas's fixed dimensions
+        /// </summary>
         public void SetDimensions(int w, int h)
         {
             width = w;
             height = h;
         }
 
+        /// <summary>
+        /// Sets the atlas's dimensions to be determined during pack
+        /// </summary>
         public void UnsetDimensions()
         {
             width = height = -1;
         }
 
+        /// <summary>
+        /// Sets the constraint to be used when determining dimensions
+        /// </summary>
         public void SetDimensionsConstraint(DimensionsConstraint dc)
             => dimensionsConstraint = dc;
 
+        /// <summary>
+        /// Sets the spacing between glyph boxes
+        /// </summary>
         public void SetSpacing(int s)
             => spacing = s;
 
+        /// <summary>
+        /// Sets fixed glyph scale
+        /// </summary>
         public void SetScale(double s)
             => scale = s;
 
+        /// <summary>
+        /// Sets the minimum glyph scale
+        /// </summary>
         public void SetMinimumScale(double ms)
             => minScale = ms;
 
+        /// <summary>
+        /// Sets the unit component of the total distance range
+        /// </summary>
         public void SetUnitRange(DoubleRange ur)
             => unitRange = ur;
 
+        /// <summary>
+        /// Sets the pixel component of the total distance range
+        /// </summary>
         public void SetPixelRange(DoubleRange pr)
             => pxRange = pr;
 
+        /// <summary>
+        /// Sets the miter limit for bounds computation
+        /// </summary>
         public void SetMiterLimit(double ml)
             => miterLimit = ml;
 
+        /// <summary>
+        /// Sets whether each glyph's origin point should stay aligned with the pixel grid
+        /// </summary>
         public void SetOriginPixelAlignment(bool align)
             => pxAlignOriginX = pxAlignOriginY = align;
 
+        /// <summary>
+        /// Sets whether each glyph's origin point should stay aligned with the pixel grid
+        /// </summary>
         public void SetOriginPixelAlignment(bool alignX, bool alignY)
         {
             pxAlignOriginX = alignX;
             pxAlignOriginY = alignY;
         }
 
+        /// <summary>
+        /// Sets the unit component of width of additional padding that is part of each glyph quad
+        /// </summary>
         public void SetInnerUnitPadding(Padding p)
             => innerUnitPadding = p;
 
+        /// <summary>
+        /// Sets the unit component of width of additional padding around each glyph quad
+        /// </summary>
         public void SetOuterUnitPadding(Padding p)
             => outerUnitPadding = p;
 
+        /// <summary>
+        /// Sets the pixel component of width of additional padding that is part of each glyph quad
+        /// </summary>
         public void SetInnerPixelPadding(Padding p)
             => innerPxPadding = p;
 
+        /// <summary>
+        /// Sets the pixel component of width of additional padding around each glyph quad
+        /// </summary>
         public void SetOuterPixelPadding(Padding p)
             => outerPxPadding = p;
 
+        /// <summary>
+        /// Outputs the atlas's final dimensions
+        /// </summary>
         public void GetDimensions(out int w, out int h)
         {
             w = width;
             h = height;
         }
 
+        /// <summary>
+        /// Returns the final glyph scale
+        /// </summary>
         public double GetScale() => scale;
 
+        /// <summary>
+        /// Returns the final combined pixel range (including converted unit range)
+        /// </summary>
         public DoubleRange GetPixelRange() => pxRange + unitRange * scale;
 
 

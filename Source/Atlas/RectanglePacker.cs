@@ -12,7 +12,6 @@ namespace SharpMSDF.Atlas
     {
         public const int WORST_FIT = 0x7fffffff;
 
-
         public RectanglePacker() { }
         public RectanglePacker(int width, int height) 
         {
@@ -34,7 +33,9 @@ namespace SharpMSDF.Atlas
             list.RemoveAt(list.Count - 1);
         }
 
+        /// <summary>
         /// Expands the packing area - both width and height must be greater or equal to the previous value
+        /// </summary>
         public void Expand(int width, int height)
         {
             if (width > 0 && height > 0)
@@ -51,7 +52,9 @@ namespace SharpMSDF.Atlas
                 SplitSpace(_Spaces.Count - 1, oldWidth, oldHeight);
             }
         }
+        /// <summary>
         /// Packs the rectangle array, returns how many didn't fit (0 on success)
+        /// </summary>
         public int Pack<TRect>(List<TRect> rectangles, int start = 0)
             where TRect : IRectangle
         {
@@ -184,7 +187,7 @@ namespace SharpMSDF.Atlas
 
         static int RateFit(int w, int h, int sw, int sh)
         {
-            return Math.Min(sw-w, sh-h); // TODO: sus
+            return Math.Min(sw-w, sh-h); 
         }
 
         void SplitSpace(int index, int w, int h)
@@ -203,12 +206,12 @@ namespace SharpMSDF.Atlas
                 _Spaces.Add(b);
         }
 
-        public static void CopyRectanglePlacement(ref Rectangle dst, Rectangle src) {
+        static void CopyRectanglePlacement(ref Rectangle dst, Rectangle src) {
             dst.X = src.X;
             dst.Y = src.Y;
         }
 
-        public static void CopyRectanglePlacement(ref OrientedRectangle dst, OrientedRectangle src)
+        static void CopyRectanglePlacement(ref OrientedRectangle dst, OrientedRectangle src)
         {
             dst.X = src.X;
             dst.Y = src.Y;

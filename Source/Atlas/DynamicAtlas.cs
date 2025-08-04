@@ -9,7 +9,21 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Atlas
 {
-    public class DynamicAtlas<TAtlasGen, TPacker>
+
+    [Flags]
+    public enum ChangeFlag : int
+    {
+        NoChange = 0x00,
+        Resized = 0x01,
+        Rearranged = 0x02,
+    }
+
+    /// <summary>
+    /// This class can be used to produce a dynamic atlas to which more glyphs are added over time.
+    /// It takes care of laying out and enlarging the atlas as necessary and delegates the actual work
+    /// to the specified AtlasGenerator, which may e.g. do the work asynchronously.
+    /// </summary>
+    public class DynamicAtlas<TAtlasGen>
         where TAtlasGen : AtlasGenerator
     {
         private int _Side;
@@ -21,13 +35,6 @@ namespace SharpMSDF.Atlas
         public RectanglePacker Packer;
         public TAtlasGen Generator;
 
-        [Flags]
-        public enum ChangeFlag : int
-        {
-            NoChange = 0x00,
-            Resized = 0x01,
-            Rearranged = 0x02,
-        }
 
         public DynamicAtlas() { }
         public DynamicAtlas(TAtlasGen generator, RectanglePacker packer, int minSide, int maxSide)
@@ -52,7 +59,9 @@ namespace SharpMSDF.Atlas
             return 0;
         }
 
-
+        /// <summary>
+        /// Adds a batch of glyphs. Adding more than one glyph at a time may improve packing efficiency
+        /// </summary>
         public ChangeFlag Add(List<GlyphGeometry> glyphs, bool allowRearrange = false)
         {
             ChangeFlag changeFlags = 0;

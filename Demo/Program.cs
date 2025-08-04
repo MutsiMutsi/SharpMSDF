@@ -12,6 +12,7 @@ using System.Reflection.Emit;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Buffers;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace SharpMSDF.Demo
 {
@@ -19,7 +20,7 @@ namespace SharpMSDF.Demo
     {
         static void Main(string[] args)
         {
-            var font = FontImporter.LoadFont("Kingthings_Petrock.ttf");
+            var font = FontImporter.LoadFont("micross.ttf");
             OneGlyphGen(font);
             ImediateAtlasGen(font);
             OnDemandAtlasGen(font);
@@ -36,7 +37,7 @@ namespace SharpMSDF.Demo
             // In the last argument, you can specify a charset other than ASCII.
             // To load specific glyph indices, use loadGlyphs instead.
             fontGeometry.LoadCharset(font, 1.0, Charset.ASCII);
-            // Apply MSDF edge coloring. See edge-coloring.h for other coloring strategies.
+            // Apply MSDF edge coloring. See EdgeColorings for other coloring strategies.
             const double maxCornerAngle = 3.0;
             for (var g = 0; g < glyphs.Count; g++)
             {
@@ -48,7 +49,7 @@ namespace SharpMSDF.Demo
             // Set atlas parameters:
             // setDimensions or setDimensionsConstraint to find the best value
             packer.SetDimensionsConstraint(DimensionsConstraint.Square);
-            // setScale for a fixed size or setMinimumScale to use the largest that fits
+            // setScale for a fixed scale or setMinimumScale to use the largest that fits
             packer.SetMinimumScale(64.0);
             // setPixelRange or setUnitRange
             packer.SetPixelRange(new DoubleRange(6.0));
@@ -82,28 +83,27 @@ namespace SharpMSDF.Demo
 
         private static void OnDemandAtlasGen(Typeface font)
         {
+            // Atlas parameters
             const double pixelRange = 6.0;
             const double glyphScale = 64.0;
             const double miterLimit = 2.0;
             const double maxCornerAngle = 3.0;
 
+            // Initialize
             List<GlyphGeometry> glyphs = new(font.GlyphCount);
             FontGeometry fontGeometry = new(glyphs);
-
-            DynamicAtlas<ImmediateAtlasGenerator<float, BitmapAtlasStorage<byte>>, TightAtlasPacker> myDynamicAtlas = new();
+            DynamicAtlas<ImmediateAtlasGenerator<float, BitmapAtlasStorage<byte>>> myDynamicAtlas = new();
             myDynamicAtlas.Generator = new(3, GlyphGenerators.Msdf);
             myDynamicAtlas.Packer = new();
 
             Console.WriteLine("Dynamic Atlas Generator Demo");
-            while (true)
+            while (true)  // Ctrl+C to exit
             {
-                Console.WriteLine("Enter char(s) to be added to Atlas (Make sure each chars are different):");
+                Console.WriteLine("Enter char(s) to be added to Atlas (Make sure no char is repeated from previous prompts):");
                 ReadOnlySpan<char> chars = Console.ReadLine();
 
-                Charset charset = new Charset();
-
+                Charset charset = new();
                 int prevEndMark = glyphs.Count;
-
                 for (int c = 0; c < chars.Length; ++c)
                     charset.Add(chars[c]);
                 fontGeometry.LoadCharset(font, 1.0, charset);
@@ -113,14 +113,16 @@ namespace SharpMSDF.Demo
                     var glyph = glyphs[g];
                     // Preprocess windings
                     glyph.GetShape().OrientContours();
-                    // Apply MSDF edge coloring. See edge-coloring.h for other coloring strategies.
+                    // Apply MSDF edge coloring. See EdgeColorings for other coloring strategies.
                     glyph.EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
-                    // Finalize glyph box size based on the parameters
+                    // Finalize glyph box scale based on the parameters
                     glyph.WrapBox(ref glyph, new() { Scale = glyphScale, Range = new( pixelRange / glyphScale), MiterLimit = miterLimit });
                     
                     glyphs[g] = glyph;
                 }
 
+                // Add glyphs to atlas - invokes the underlying atlas generator
+                // Adding multiple glyphs at once may improve packing efficiency.
                 var changeFlags = myDynamicAtlas.Add(glyphs[prevEndMark..]);
 
                 var bitmap = myDynamicAtlas.Generator.Storage.Bitmap;
@@ -131,48 +133,37 @@ namespace SharpMSDF.Demo
 
         private static void OneGlyphGen(Typeface font)
         {
-            var shape = FontImporter.LoadGlyph(font, '#', FontCoordinateScaling.EmNormalized);
-            int size = 64;
-            var msdf = new Bitmap<float>(size, size, 3);
-
-            shape.OrientContours(); // This will orient the windings
-            shape.Normalize();
-
-            EdgeColorings.InkTrap(shape, 3.0); // Angle Thereshold
-
-            double l=0.0, b = 0.0, r = 0.0, t = 0.0;
-            shape.Bound(ref l, ref b, ref r, ref t);
-            var minSize = size * Math.Min(t - b, r - l);
-            var maxSize = size * Math.Max(t - b, r - l);
+            // Set some generation parameters 
+            int scale = 64;
             double pxrange = 6.0;
-            var distMap = new DistanceMapping(new(-pxrange / size, pxrange / size)); // Range
-                                                                   //  Scale    Translation  
-            var transformation = new SDFTransformation(new Projection(new(size), new(0)), distMap);
+            double angleThereshold = 3.0;
 
+            // Load the glyph
+            var shape = FontImporter.LoadGlyph(font, '#', FontCoordinateScaling.EmNormalized);
+            var msdf = new Bitmap<float>(scale, scale, 3);
 
+            shape.OrientContours(); // This will fix orientation of the windings
+            shape.Normalize(); // Normalize the Shape geometry for distance field generation.
+            EdgeColorings.InkTrap(shape, angleThereshold); // Assign colors to the edges of the shape, we use InkTrap technique here.
+
+                                           // range = pxrange / scale
+            var distMap = new DistanceMapping(new(pxrange / scale)); 
+            var transformation = new SDFTransformation(new Projection(new(scale), new(0)), distMap);
+                                                                     //    ^ Scale    ^ Translation  
+            // Generate msdf
             MSDFGen.GenerateMSDF(
                 msdf,
                 shape,
-                transformation,
-                new MSDFGeneratorConfig(
-                    overlapSupport: false,
-                    errorCorrection: new ErrorCorrectionConfig(OpMode.EDGE_PRIORITY, ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE)
-                )
+                transformation
             );
-            //Rasterization.DistanceSignCorrection(msdf, shape, transformation.Projection, FillRule.FILL_NONZERO);
-            //MSDFErrorCorrection.ErrorCorrection(msdf, shape, transformation, new MSDFGeneratorConfig(
-            //    overlapSupport: false,
-            //    errorCorrection: new ErrorCorrectionConfig(OpMode.DISABLED, ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE)
-            //    )
-            //);
-
-
+            
+            // Save msdf output
             Png.SavePng(msdf, "output.png");
 
-            // Rendering Preview
+            // Save a rendering preview
             var rast = new Bitmap<float>(1024, 1024);
             Render.RenderSdf(rast, msdf, pxrange);
-            Png.SavePng(rast, "rasterized.png");
+            Png.SavePng(rast, "render.png");
         }
     
     }

@@ -17,18 +17,26 @@ namespace SharpMSDF.Core
             public double l, b, r, t;
         }
 
+        /// <summary>
         /// The list of contours the Shape consists of.
+        /// </summary>
         public List<Contour> Contours = [];
+        /// <summary>
         /// Specifies whether the Shape uses bottom-to-top (false) or top-to-bottom (true) Y coordinates.
+        /// </summary>
         public bool InverseYAxis = false;
 
+        /// <summary>
         /// Adds a contour.
+        /// </summary>
         public void AddContour(Contour contour)
         {
             Contours.Add(contour);
         }
 
+        /// <summary>
         /// Adds a blank contour and returns its reference.
+        /// </summary>
         public Contour AddContour()
         {
             var contour = new Contour();
@@ -36,7 +44,9 @@ namespace SharpMSDF.Core
             return contour;
         }
 
+        /// <summary>
         /// Performs basic checks to determine if the object represents a valid Shape.
+        /// </summary>
         public bool Validate()
         {
             for (int i = 0; i < Contours.Count; i++)
@@ -118,21 +128,27 @@ namespace SharpMSDF.Core
             }
         }
 
+        /// <summary>
         /// Adjusts the bounding box to fit the Shape.
+        /// </summary>
         public void Bound(ref double l, ref double b, ref double r, ref double t)
         {
             for (int i = 0; i < Contours.Count; i++)
                 Contours[i].Bound(ref l, ref b, ref r, ref t);
         }
 
+        /// <summary>
         /// Adjusts the bounding box to fit the Shape border's mitered corners.
+        /// </summary>
         public void BoundMiters(ref double l, ref double b, ref double r, ref double t, double border, double miterLimit, int polarity)
         {
             for (int i = 0; i < Contours.Count; i++)
                 Contours[i].BoundMiters(ref l, ref b, ref r, ref t, border, miterLimit, polarity);
         }
 
+        /// <summary>
         /// Computes the minimum bounding box that fits the Shape, optionally with a (mitered) border.
+        /// </summary>
         public Bounds GetBounds(double border = 0.0, double miterLimit = 0.0, int polarity = 0)
         {
             const double LARGE_VALUE = 1e240;
@@ -154,7 +170,9 @@ namespace SharpMSDF.Core
             return bounds;
         }
 
+        /// <summary>
         /// Outputs the scanline that intersects the Shape at y.
+        /// </summary>
         public void Scanline(Scanline line, double y)
         {
             List<Scanline.Intersection> intersections = new();
@@ -174,7 +192,9 @@ namespace SharpMSDF.Core
             line.SetIntersections(intersections);
         }
 
+        /// <summary>
         /// Returns the total number of edge segments
+        /// </summary>
         public int EdgeCount()
         {
             int total = 0;
@@ -184,7 +204,9 @@ namespace SharpMSDF.Core
         }
 
         readonly static double _Ratio = 0.5 * (Math.Sqrt(5) - 1);
+        /// <summary>
         /// Assumes its contours are unoriented (even-odd fill rule). Attempts to orient them to conform to the non-zero winding rule.
+        /// </summary>
         public void OrientContours()
         {
             var orientations = new int[Contours.Count];

@@ -68,39 +68,11 @@ namespace SharpMSDF.IO
             return (float) Math.Clamp((dist - .5) * pxRange + .5, 0, 1);
         }
 
-        //public static void RenderSdf(Bitmap<float> output, Bitmap<float> sdf, double pxRange)
-        //{
-        //    int w = output.Width, h = output.Height;
-        //    pxRange *= (double) (w + h) / (sdf.Width + sdf.Height);
-        //    for (var y = 0; y < h; ++y)
-        //    for (var x = 0; x < w; ++x)
-        //    {
-        //        var s = Sample(sdf, new Vector2((x + .5) / w, (y + .5) / h));
-        //        output[x, y] = DistVal(s, pxRange);
-        //    }
-        //}
 
-        //public static void RenderSdf(Bitmap<FloatRgb> output, Bitmap<float> sdf, double pxRange)
-        //{
-        //    int w = output.Width, h = output.Height;
-        //    pxRange *= (double)(w + h) / (sdf.Width + sdf.Height);
-        //    for (var y = 0; y < h; ++y)
-        //        for (var x = 0; x < w; ++x)
-        //        {
-        //            var s = Sample(sdf, new Vector2((x + .5) / w, (y + .5) / h));
-        //            var v = DistVal(s, pxRange);
-        //            output[x, y].R = v;
-        //            output[x, y].G = v;
-        //            output[x, y].B = v;
-        //        }
-        //}
-
-        //public static void RenderSdf(Bitmap<float> output, Bitmap<FloatRgb> sdf, double pxRange)
-        //{
-            
-    //}
-
-    public static void RenderSdf(BitmapRef<float> output, BitmapConstRef<float> sdf, double pxRange)
+        /// <summary>
+        /// Reconstructs the shape's appearance into output from the distance field sdf.
+        /// </summary>
+        public static void RenderSdf(BitmapRef<float> output, BitmapConstRef<float> sdf, double pxRange)
         {
             int w = output.SubWidth, h = output.SubHeight;
             pxRange *= (double) (w + h) / (sdf.SubWidth + sdf.SubHeight);
@@ -115,6 +87,15 @@ namespace SharpMSDF.IO
                     }
                     break;
                 case 3:
+                    for (var y = 0; y < h; ++y)
+                        for (var x = 0; x < w; ++x)
+                        {
+                            var s = Sample3(sdf, new Vector2((x + .5) / w, (y + .5) / h));
+                            output[x, y] = DistVal(Arithmetic.Median(s.R, s.G, s.B), pxRange);
+                        }
+
+                    break;
+                case 4:
                     for (var y = 0; y < h; ++y)
                         for (var x = 0; x < w; ++x)
                         {
