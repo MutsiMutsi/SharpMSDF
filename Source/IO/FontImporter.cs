@@ -58,8 +58,8 @@ namespace SharpMSDF.IO
             metrics.EmSize = scale * face.UnitsPerEm;
             metrics.AscenderY = scale * face.Ascender;
             metrics.DescenderY = scale * face.Descender;
-            metrics.LineHeight = scale * (face.Bounds.YMax - face.Bounds.YMin);
-            metrics.UnderlineY = scale * face.UnderlinePosition;
+			metrics.LineHeight = scale * (face.Ascender - face.Descender + face.LineGap);
+			metrics.UnderlineY = scale * face.UnderlinePosition;
             //metrics.UnderlineThickness = not implemented
             return true;
         }
