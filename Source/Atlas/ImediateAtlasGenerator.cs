@@ -15,7 +15,7 @@ namespace SharpMSDF.Atlas
 
 		private List<T> _GlyphBuffer = [];
 		private List<byte> _ErrorCorrectionBuffer = [];
-		private GeneratorAttributes _Attributes;
+		private GeneratorAttributes _Attributes = new GeneratorAttributes { Config = MSDFGeneratorConfig.Default };
 		private int _ThreadCount = 1;
 
 		public ImmediateAtlasGenerator(int n, GeneratorFunction<T> genFn)
@@ -69,6 +69,7 @@ namespace SharpMSDF.Atlas
 			}
 
 			GeneratorAttributes[] threadAttributes = new GeneratorAttributes[_ThreadCount];
+
 			// Get spans for the buffers to avoid repeated List access
 			Span<T> glyphBufferSpan = CollectionsMarshal.AsSpan(_GlyphBuffer);
 			Span<byte> errorBufferSpan = CollectionsMarshal.AsSpan(_ErrorCorrectionBuffer);
