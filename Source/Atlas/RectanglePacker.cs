@@ -16,20 +16,20 @@ namespace SharpMSDF.Atlas
         public RectanglePacker(int width, int height) 
         {
             if (width > 0 && height > 0)
-                _Spaces.Add(new Rectangle(0, 0, width, height));
+                _Spaces.Add(new AtlasRectangle(0, 0, width, height));
         }
 
 
-        static void RemoveFromUnorderedVector<T>(ref Span<T> span, int index)
+        static void RemoveFromUnorderedList<T>(ref Span<T> span, int index)
         {
             if (index != span.Length - 1)
-                span[index] = span[^1];
-            span = span.Slice(0, span.Length - 1);
+                (span[index], span[^1]) = (span[^1], span[index]);
+            span = span[.. (span.Length - 1)];
         }
-        static void RemoveFromUnorderedVector<T>(List<T> list, int index)
+        static void RemoveFromUnorderedList<T>(List<T> list, int index)
         {
             if (index != list.Count - 1)
-                list[index] = list[^1];
+                (list[index], list[^1]) = (list[^1], list[index]);
             list.RemoveAt(list.Count - 1);
         }
 
@@ -48,15 +48,14 @@ namespace SharpMSDF.Atlas
                     if (space.Y + space.Height > oldHeight)
                         oldHeight = space.Y + space.Height;
                 }
-                _Spaces.Add(new Rectangle(0, 0, width, height ));
+                _Spaces.Add(new AtlasRectangle(0, 0, width, height ));
                 SplitSpace(_Spaces.Count - 1, oldWidth, oldHeight);
             }
         }
         /// <summary>
         /// Packs the rectangle array, returns how many didn't fit (0 on success)
         /// </summary>
-        public int Pack<TRect>(List<TRect> rectangles, int start = 0)
-            where TRect : IRectangle
+        public int Pack(List<AtlasRectangle> rectangles, int start = 0)
         {
             Span<int> remainingRects = stackalloc int[rectangles.Count - start];
 
@@ -67,10 +66,10 @@ namespace SharpMSDF.Atlas
                 int bestFit = WORST_FIT;
                 int bestSpace = -1;
                 int bestRect = -1;
-                TRect rect;
+                AtlasRectangle rect;
                 for (int i = 0; i < _Spaces.Count; ++i)
                 {
-                    Rectangle space = _Spaces[i];
+                    AtlasRectangle space = _Spaces[i];
                     for (int j = 0; j < remainingRects.Length; ++j)
                     {
                         rect = rectangles[remainingRects[j]];
@@ -95,18 +94,18 @@ namespace SharpMSDF.Atlas
                 if (bestSpace < 0 || bestRect < 0)
                     break;
 
-                BEST_FIT_FOUND:
+                BEST_FIT_FOUND: 
 
                 rect = rectangles[remainingRects[bestRect]];
                 rect.X = _Spaces[bestSpace].X;
                 rect.Y = _Spaces[bestSpace].Y;
                 rectangles[remainingRects[bestRect]] = rect;
                 SplitSpace(bestSpace, rect.Width, rect.Height);
-                RemoveFromUnorderedVector(ref remainingRects, bestRect);
+                RemoveFromUnorderedList(ref remainingRects, bestRect);
             }
             return remainingRects.Length;
         }
-        public int Pack(List<Rectangle> spaces, List<OrientedRectangle> rectangles)
+        public int Pack(List<AtlasRectangle> spaces, List<AtlasRectangle> rectangles)
         {
             Span<int> remainingRects = stackalloc int[rectangles.Count];
 
@@ -118,10 +117,10 @@ namespace SharpMSDF.Atlas
                 int bestSpace = -1;
                 int bestRect = -1;
                 bool bestRotated = false;
-               OrientedRectangle rect;
+                AtlasRectangle rect;
                 for (int i = 0; i < spaces.Count; ++i)
                 {
-                    Rectangle space = spaces[i];
+                    AtlasRectangle space = spaces[i];
                     for (int j = 0; j < remainingRects.Length; ++j)
                     {
                         rect = rectangles[remainingRects[j]];
@@ -178,12 +177,12 @@ namespace SharpMSDF.Atlas
                 else
                     SplitSpace(bestSpace, rect.Width, rect.Height);
                     
-                RemoveFromUnorderedVector(ref remainingRects, bestRect);
+                RemoveFromUnorderedList(ref remainingRects, bestRect);
             }
             return remainingRects.Length;
         }
 
-        List<Rectangle> _Spaces = [];
+        List<AtlasRectangle> _Spaces = [];
 
         static int RateFit(int w, int h, int sw, int sh)
         {
@@ -192,10 +191,10 @@ namespace SharpMSDF.Atlas
 
         void SplitSpace(int index, int w, int h)
         {
-            Rectangle space = _Spaces[index];
-            RemoveFromUnorderedVector(_Spaces, index);
-            Rectangle a = new ( space.X, space.Y + h, w, space.Height - h );
-            Rectangle b = new ( space.X + w, space.Y, space.Width - w, h );
+            AtlasRectangle space = _Spaces[index];
+            RemoveFromUnorderedList(_Spaces, index);
+            AtlasRectangle a = new ( space.X, space.Y + h, w, space.Height - h );
+            AtlasRectangle b = new ( space.X + w, space.Y, space.Width - w, h );
             if (w * (space.Height - h) < h * (space.Width - w))
                 a.Width = space.Width;
             else
@@ -206,12 +205,7 @@ namespace SharpMSDF.Atlas
                 _Spaces.Add(b);
         }
 
-        static void CopyRectanglePlacement(ref Rectangle dst, Rectangle src) {
-            dst.X = src.X;
-            dst.Y = src.Y;
-        }
-
-        static void CopyRectanglePlacement(ref OrientedRectangle dst, OrientedRectangle src)
+        static void CopyRectanglePlacement(ref AtlasRectangle dst, AtlasRectangle src)
         {
             dst.X = src.X;
             dst.Y = src.Y;
@@ -219,20 +213,21 @@ namespace SharpMSDF.Atlas
         }
 
 
-    /// <summary>
-    /// Packs the rectangle array into an atlas with fixed dimensions.
-    /// Returns the error code (0 on success, >0 if some didn't fit).
-    /// </summary>
-    public static int Pack<T>(List<T> rectangles, int width, int height, int spacing = 0)
-            where T : IRectangle
+        /// <summary>
+        /// Packs the rectangle array into an atlas with fixed dimensions.
+        /// Returns the error code (0 on success, >0 if some didn't fit).
+        /// </summary>
+        public static int Pack(List<AtlasRectangle> rectangles, int width, int height, int spacing = 0)
         {
             // Expand each box by spacing
             if (spacing != 0)
             {
-                foreach (var r in rectangles)
+                for (int r = 0; r < rectangles.Count; r++)
                 {
-                    r.Width += spacing;
-                    r.Height += spacing;
+                    var rect = rectangles[r];
+                    rect.Width += spacing;
+                    rect.Height += spacing;
+                    rectangles[r] = rect;
                 }
             }
 
@@ -243,10 +238,12 @@ namespace SharpMSDF.Atlas
             // Shrink back
             if (spacing != 0)
             {
-                foreach (var r in rectangles)
+                for (int r = 0; r < rectangles.Count; r++)
                 {
-                    r.Width -= spacing;
-                    r.Height -= spacing;
+                    var rect = rectangles[r];
+                    rect.Width -= spacing;
+                    rect.Height -= spacing;
+                    rectangles[r] = rect;
                 }
             }
 
@@ -258,15 +255,14 @@ namespace SharpMSDF.Atlas
         /// Uses a size‐selector to iterate possible atlas sizes until it fits.
         /// Returns the chosen (width, height).
         /// </summary>
-        public static (int Width, int Height) PackWithSelector<SizeSelector, TRect>(List<TRect> rectangles, int spacing = 0)
-            where TRect : IRectangle, new()
+        public static (int Width, int Height) PackWithSelector<SizeSelector>(List<AtlasRectangle> rectangles, int spacing = 0)
             where SizeSelector : ISizeSelector, new()
         {
             // Make a copy and expand by spacing
             var copy = rectangles
                 .Select(r =>
                 {
-                    var c = new TRect();
+                    var c = new AtlasRectangle();
                     c.Width = r.Width + spacing;
                     c.Height = r.Height + spacing;
                     return c;
@@ -291,19 +287,9 @@ namespace SharpMSDF.Atlas
                     dimensions = (w, h);
                     for (int i = 0; i < rectangles.Count; i++)
                     {
-                        if (rectangles is List<Rectangle> rectanglesNormal && copy[i] is Rectangle copyr)
-                        {
-                            var tmpRect = rectanglesNormal[i];
-                            CopyRectanglePlacement(ref tmpRect, copyr);
-                            rectanglesNormal[i] = tmpRect;
-                        }
-                        else if (rectangles is List<OrientedRectangle> rectanglesOriented && copy[i] is OrientedRectangle copyo)
-                        {
-                            var tmpRect = rectanglesOriented[i];
-                            CopyRectanglePlacement(ref tmpRect, copyo);
-                            rectanglesOriented[i] = tmpRect;
-                        }
-                        else throw new("Not suitable types between Rectangle and OrientedRectangle (should not happen)");
+                        var tmpRect = rectangles[i];
+                        CopyRectanglePlacement(ref tmpRect, copy[i]);
+                        rectangles[i] = tmpRect;
                     }
                     selector.Decrement();
                 }

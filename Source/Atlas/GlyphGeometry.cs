@@ -25,7 +25,7 @@ namespace SharpMSDF.Atlas
 
         private struct BoxData
         {
-            public Rectangle Rect;
+            public AtlasRectangle Rect;
             public DoubleRange Range;
             public double Scale;
             public Vector2 Translate;
@@ -228,7 +228,7 @@ namespace SharpMSDF.Atlas
             return this;
         }
 
-        public GlyphGeometry SetBoxRect(Rectangle rect)
+        public GlyphGeometry SetBoxRect(AtlasRectangle rect)
         {
             _box.Rect = rect;
             return this;
@@ -252,7 +252,7 @@ namespace SharpMSDF.Atlas
         //public ref _shape GetShape() => _shape;
         //public ref _shape.Bounds GetShapeBounds() => ref _bounds;
         public double GetAdvance() => _advance;
-        public Rectangle GetBoxRect() => _box.Rect;
+        public AtlasRectangle GetBoxRect() => _box.Rect;
         public void GetBoxRect(out int x, out int y, out int w, out int h)
         {
             x = _box.Rect.X;
