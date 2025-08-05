@@ -103,19 +103,18 @@ namespace SharpMSDF.Atlas
 			_ = workload.Finish(_ThreadCount);
 		}
 
-		public override void Rearrange(int width, int height, List<Remap> remapping, int start = 0)
+        public override void Rearrange(int width, int height, List<Remap> remapping, int count)
 		{
-			for (int i = start; i < remapping.Count - start; ++i)
+            for (int i = 0; i < count; ++i)
 			{
-				GlyphBox glyphBox = Layout[remapping[i].Index];
-
-				glyphBox = Layout[remapping[i].Index] with { Rect = glyphBox.Rect with { X = remapping[i].Target.X, Y = remapping[i].Target.Y } };
+                var glyphBox = Layout[remapping[i].Index] with { Rect = Layout[remapping[i].Index].Rect with { X = remapping[i].Target.X, Y = remapping[i].Target.Y } };
 
 				Layout[remapping[i].Index] = glyphBox;
 			}
 
-			Storage = new TStorage();
-			Storage.Init(Storage, width, height, remapping.ToArray());
+            var oldStorage = Storage;
+            Storage = new();
+            Storage.Init(oldStorage, width, height, remapping.ToArray()[..count]);
 		}
 
 		public override void Resize(int width, int height)

@@ -1,13 +1,4 @@
-﻿using SharpMSDF.Core;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SharpMSDF.Atlas
+﻿namespace SharpMSDF.Atlas
 {
 
     [Flags]
@@ -30,7 +21,7 @@ namespace SharpMSDF.Atlas
         private int _Spacing;
         private int _GlyphCount;
         private int _TotalArea;
-        private List<Rectangle> _Rectangles = [];
+        private List<AtlasRectangle> _Rectangles = [];
         private List<Remap> _RemapBuffer = [];
         public RectanglePacker Packer;
         public TAtlasGen Generator;
@@ -64,6 +55,7 @@ namespace SharpMSDF.Atlas
         /// </summary>
         public ChangeFlag Add(List<GlyphGeometry> glyphs, bool allowRearrange = false)
         {
+            // TODO : Fix
             ChangeFlag changeFlags = 0;
             int start = _Rectangles.Count;
 
@@ -72,7 +64,7 @@ namespace SharpMSDF.Atlas
                 if (!glyphs[i].IsWhitespace())
                 {
                     glyphs[i].GetBoxSize(out int w, out int h);
-                    _Rectangles.Add(new Rectangle(0, 0, w + _Spacing, h + _Spacing));
+                    _Rectangles.Add(new AtlasRectangle(0, 0, w + _Spacing, h + _Spacing));
 
                     _RemapBuffer.Add(new Remap
                     {
@@ -103,7 +95,7 @@ namespace SharpMSDF.Atlas
                     else
                     {
                         Packer.Expand(_Side + _Spacing, _Side + _Spacing);
-                        packerStart = _Rectangles.Count - remaining;
+                        packerStart = _Rectangles.Count - remaining; // (- remaining) was removed for bug reason
                     }
 
                     changeFlags |= ChangeFlag.Resized;

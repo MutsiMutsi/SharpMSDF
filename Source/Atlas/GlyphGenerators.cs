@@ -32,7 +32,6 @@ namespace SharpMSDF.Atlas
 		public static void Msdf(BitmapRef<float> output, GlyphGeometry glyph, GeneratorAttributes attribs)
 		{
 			MSDFGeneratorConfig config = attribs.Config;
-
 			if (attribs.ScanlinePass)
 				config.ErrorCorrection.Mode = ErrorCorrectionConfig.OpMode.DISABLED;
 			MSDFGen.GenerateMSDF(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);

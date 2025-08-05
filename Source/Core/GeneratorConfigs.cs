@@ -6,6 +6,14 @@
 	/// </summary>
 	public struct ErrorCorrectionConfig
 	{
+		public readonly static ErrorCorrectionConfig Default = new ErrorCorrectionConfig(
+
+			OpMode.EDGE_PRIORITY,
+			ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE,
+			DefaultMinDeviationRatio,
+			DefaultMinImproveRatio
+		);
+
 		/// <summary>The default value of MinDeviationRatio.</summary>
 		public const double DefaultMinDeviationRatio = 1.1111111111111112;
 		/// <summary>The default value of MinImproveRatio.</summary>
@@ -111,7 +119,7 @@
 		public unsafe MSDFGeneratorConfig(bool overlapSupport = true, ErrorCorrectionConfig? errorCorrection = null)
 		{
 			OverlapSupport = overlapSupport;
-			ErrorCorrection = errorCorrection ?? new ErrorCorrectionConfig();
+			ErrorCorrection = errorCorrection ?? ErrorCorrectionConfig.Default;
 		}
 	}
 }

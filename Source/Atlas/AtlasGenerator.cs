@@ -23,7 +23,7 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Resizes the atlas and rearranges the generated pixels according to the remapping array.
 		/// </summary>
-		public abstract void Rearrange(int width, int height, List<Remap> remapping, int start = 0);
+        public abstract void Rearrange(int width, int height, List<Remap> remapping, int count);
 
 		/// <summary>
 		/// Resizes the atlas and keeps the generated pixels in place.

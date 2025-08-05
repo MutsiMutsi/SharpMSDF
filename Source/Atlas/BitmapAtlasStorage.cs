@@ -40,17 +40,12 @@ namespace SharpMSDF.Atlas
             if (orig is BitmapAtlasStorage<T> origStorage)
             {
                 Bitmap = new Bitmap<T>(width, height, origStorage.Bitmap.N);
-                Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
                 for (int i = 0; i < remapping.Length; ++i)
                 {
                     var remap = remapping[i];
                     Blitter.Blit(new BitmapRef<T>(Bitmap), origStorage.Bitmap, remap.Target.X, remap.Target.Y, remap.Source.X, remap.Source.Y, remap.Width, remap.Height);
                 }
             }
-        }
-
-        public void Init(BitmapAtlasStorage<T> orig, int width, int height, Remap[] remapping)
-        {
         }
 
         public static implicit operator BitmapConstRef<T>(BitmapAtlasStorage<T> storage) => new BitmapConstRef<T>(storage.Bitmap);

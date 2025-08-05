@@ -196,7 +196,7 @@ namespace SharpMSDF.Atlas
         unsafe int TryPack(GlyphGeometry* glyphs, int count, DimensionsConstraint dc, ref int w, ref int h, double s)
         {
             // Prepare boxes
-            var rects = new List<Rectangle>(count);
+            var rects = new List<AtlasRectangle>(count);
             fixed (GlyphGeometry** rectGlyphs = new GlyphGeometry*[count])
             {
                 int rectGlyphsI = 0;
@@ -238,11 +238,11 @@ namespace SharpMSDF.Atlas
                 {
                     (int pw, int ph) = dc switch
                     {
-                        DimensionsConstraint.PowerOfTwoSquares => RectanglePacker.PackWithSelector<SquarePowerOfTwoSizeSelector, Rectangle>(rects, spacing),
-                        DimensionsConstraint.PowerOfTwoRectangle => RectanglePacker.PackWithSelector<PowerOfTwoSizeSelector, Rectangle>(rects, spacing),
-                        DimensionsConstraint.MultipleOfFourSquare => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing),
-                        DimensionsConstraint.EvenSquare => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing),
-                        _ /*Square*/                            => RectanglePacker.PackWithSelector<SquareSizeSelector, Rectangle>(rects, spacing)
+                        DimensionsConstraint.PowerOfTwoSquares => RectanglePacker.PackWithSelector<SquarePowerOfTwoSizeSelector>(rects, spacing),
+                        DimensionsConstraint.PowerOfTwoRectangle => RectanglePacker.PackWithSelector<PowerOfTwoSizeSelector>(rects, spacing),
+                        DimensionsConstraint.MultipleOfFourSquare => RectanglePacker.PackWithSelector<SquareSizeSelector>(rects, spacing),
+                        DimensionsConstraint.EvenSquare => RectanglePacker.PackWithSelector<SquareSizeSelector>(rects, spacing),
+                        _ /*Square*/                            => RectanglePacker.PackWithSelector<SquareSizeSelector>(rects, spacing)
                     };
                     if (pw <= 0 || ph <= 0) return -1;
                     w = pw; h = ph;

@@ -19,7 +19,7 @@ namespace SharpMSDF.Atlas
         public ushort Index;
         public double Advance;
         public Bounds Bounds;   
-        public Rectangle Rect;
+        public AtlasRectangle Rect;
 
     }
 
