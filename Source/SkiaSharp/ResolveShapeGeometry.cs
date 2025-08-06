@@ -25,22 +25,22 @@ namespace SharpMSDF.SkiaSharp
 			{
 				if (contour.Edges.Count > 0)
 				{
-					var edge = contour.Edges.LastOrDefault();
+					var edge = contour.Edges[contour.Edges.Count - 1];
 					var controlPoints = edge.ControlPoints();
 					skPath.MoveTo(PointToSkiaPoint(controlPoints[0]));
 
 					foreach (var nextEdge in contour.Edges)
 					{
 						var p = edge.ControlPoints();
-						switch (edge.Type())
+						switch (edge.Type)
 						{
-							case 1:
+							case EdgeSegmentType.Linear:
 								skPath.LineTo(PointToSkiaPoint(p[1]));
 								break;
-							case 2:
+							case EdgeSegmentType.Quadratic:
 								skPath.QuadTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]));
 								break;
-							case 3:
+							case EdgeSegmentType.Cubic:
 								skPath.CubicTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]), PointToSkiaPoint(p[3]));
 								break;
 						}
@@ -70,27 +70,37 @@ namespace SharpMSDF.SkiaSharp
 							break;
 
 						case SKPathVerb.Line:
-							contour.AddEdge(EdgeSegment.Create(
-								PointFromSkiaPoint(edgePoints[0]),
-								PointFromSkiaPoint(edgePoints[1])
+
+							contour.AddEdge(new EdgeSegment(
+								new LinearSegment(
+									PointFromSkiaPoint(edgePoints[0]),
+									PointFromSkiaPoint(edgePoints[1])
+								)
 							));
 							break;
 
 						case SKPathVerb.Quad:
-							contour.AddEdge(EdgeSegment.Create(
-								PointFromSkiaPoint(edgePoints[0]),
-								PointFromSkiaPoint(edgePoints[1]),
-								PointFromSkiaPoint(edgePoints[2])
+
+							contour.AddEdge(new EdgeSegment(
+								new QuadraticSegment(
+									PointFromSkiaPoint(edgePoints[0]),
+									PointFromSkiaPoint(edgePoints[1]),
+									PointFromSkiaPoint(edgePoints[2])
+								)
 							));
+
 							break;
 
 						case SKPathVerb.Cubic:
-							contour.AddEdge(EdgeSegment.Create(
-								PointFromSkiaPoint(edgePoints[0]),
-								PointFromSkiaPoint(edgePoints[1]),
-								PointFromSkiaPoint(edgePoints[2]),
-								PointFromSkiaPoint(edgePoints[3])
+							contour.AddEdge(new EdgeSegment(
+								new CubicSegment(
+									PointFromSkiaPoint(edgePoints[0]),
+									PointFromSkiaPoint(edgePoints[1]),
+									PointFromSkiaPoint(edgePoints[2]),
+									PointFromSkiaPoint(edgePoints[3])
+								)
 							));
+
 							break;
 
 						case SKPathVerb.Conic:
@@ -105,10 +115,12 @@ namespace SharpMSDF.SkiaSharp
 								(edgePoints[0].Y + 2 * edgePoints[1].Y + edgePoints[2].Y) / 4
 							);
 
-							contour.AddEdge(EdgeSegment.Create(
-								PointFromSkiaPoint(edgePoints[0]),
-								PointFromSkiaPoint(mid),
-								PointFromSkiaPoint(edgePoints[2])
+							contour.AddEdge(new EdgeSegment(
+								new QuadraticSegment(
+									PointFromSkiaPoint(edgePoints[0]),
+									PointFromSkiaPoint(mid),
+									PointFromSkiaPoint(edgePoints[2])
+								)
 							));
 							break;
 
@@ -130,10 +142,10 @@ namespace SharpMSDF.SkiaSharp
 			{
 				var contour = shape.Contours[i];
 				if (contour.Edges.Count == 4 &&
-					contour.Edges[0].Type() == 0 &&
-					contour.Edges[1].Type() == 0 &&
-					contour.Edges[2].Type() == 0 &&
-					contour.Edges[3].Type() == 0)
+					contour.Edges[0].Type == EdgeSegmentType.Linear &&
+					contour.Edges[1].Type == EdgeSegmentType.Linear &&
+					contour.Edges[2].Type == EdgeSegmentType.Linear &&
+					contour.Edges[3].Type == EdgeSegmentType.Linear)
 				{
 					var sum = Sign(CrossProduct(contour.Edges[0].Direction(1), contour.Edges[1].Direction(0))) +
 							  Sign(CrossProduct(contour.Edges[1].Direction(1), contour.Edges[2].Direction(0))) +

@@ -16,7 +16,7 @@ namespace SharpMSDF.Core
 		public double APerpDistance, BPerpDistance;
 	}
 
-	public unsafe struct PerpendicularDistanceSelector
+	public unsafe ref struct PerpendicularDistanceSelector
 	{
 		private Vector2 _p;
 		private PerpendicularDistanceSelectorBase _base;
@@ -83,7 +83,7 @@ namespace SharpMSDF.Core
 		public SignedDistance TrueDistance() => _base.TrueDistance();
 	}
 
-	public struct PerpendicularDistanceSelectorBase
+	public ref struct PerpendicularDistanceSelectorBase
 	{
 		private SignedDistance _minTrueDistance;
 		private double _minNegPerp, _minPosPerp;
@@ -97,7 +97,6 @@ namespace SharpMSDF.Core
 			_minTrueDistance = new SignedDistance();
 			_minNegPerp = -Math.Abs(_minTrueDistance.Distance);
 			_minPosPerp = Math.Abs(_minTrueDistance.Distance);
-			_nearEdge = null;
 			_nearEdgeParam = 0;
 		}
 
@@ -123,7 +122,6 @@ namespace SharpMSDF.Core
 			_minTrueDistance.Distance += Arithmetic.NonZeroSign(_minTrueDistance.Distance) * delta;
 			_minNegPerp = -Math.Abs(_minTrueDistance.Distance);
 			_minPosPerp = Math.Abs(_minTrueDistance.Distance);
-			_nearEdge = null;
 			_nearEdgeParam = 0;
 		}
 
@@ -181,7 +179,7 @@ namespace SharpMSDF.Core
 		internal double ComputeDistance(Vector2 p)
 		{
 			double best = _minTrueDistance.Distance < 0 ? _minNegPerp : _minPosPerp;
-			if (_nearEdge != null)
+			if (_nearEdge.Type != EdgeSegmentType.None)
 			{
 				var sd = _minTrueDistance;
 				_nearEdge.DistanceToPerpendicularDistance(ref sd, p, _nearEdgeParam);
@@ -195,7 +193,7 @@ namespace SharpMSDF.Core
 		public SignedDistance TrueDistance() => _minTrueDistance;
 	}
 
-	public struct MultiDistanceSelector
+	public ref struct MultiDistanceSelector
 	{
 		private Vector2 _p;
 		private PerpendicularDistanceSelectorBase _r;

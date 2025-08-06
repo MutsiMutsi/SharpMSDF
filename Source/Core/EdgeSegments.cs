@@ -1,41 +1,156 @@
+using System.Drawing;
+using System.IO;
 
 namespace SharpMSDF.Core
 {
-
-	public abstract class EdgeSegment
+	public enum EdgeSegmentType : byte
 	{
-		public EdgeColor Color;
+		None = 0,
+		Linear,
+		Quadratic,
+		Cubic
+	}
 
-		public const int MSDFGEN_CUBIC_SEARCH_STARTS = 4;
-		public const int MSDFGEN_CUBIC_SEARCH_STEPS = 4;
+	public readonly struct EdgeSegment
+	{
+		public readonly EdgeSegmentType Type;
+		public readonly EdgeColor Color;
 
-		protected EdgeSegment(EdgeColor color = EdgeColor.White)
+		private readonly LinearSegment linear;
+		private readonly QuadraticSegment quadratic;
+		private readonly CubicSegment cubic;
+
+		public EdgeSegment(LinearSegment segment, EdgeColor color = EdgeColor.White)
 		{
+			Type = EdgeSegmentType.Linear;
 			Color = color;
+			linear = segment;
+			quadratic = default;
+			cubic = default;
 		}
 
-		public static LinearSegment Create(Vector2 p0, Vector2 p1, EdgeColor edgeColor = EdgeColor.White)
+		public EdgeSegment(QuadraticSegment segment, EdgeColor color = EdgeColor.White)
 		{
-			return new LinearSegment(p0, p1, edgeColor);
+			Type = EdgeSegmentType.Quadratic;
+			Color = color;
+			linear = default;
+			quadratic = segment;
+			cubic = default;
 		}
 
-		public static QuadraticSegment Create(Vector2 p0, Vector2 p1, Vector2 p2, EdgeColor edgeColor = EdgeColor.White)
+		public EdgeSegment(CubicSegment segment, EdgeColor color = EdgeColor.White)
 		{
-			return new QuadraticSegment(p0, p1, p2, edgeColor);
+			Type = EdgeSegmentType.Cubic;
+			Color = color;
+			linear = default;
+			quadratic = default;
+			cubic = segment;
 		}
 
-		public static CubicSegment Create(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3, EdgeColor edgeColor = EdgeColor.White)
+		public Vector2 Point(double t)
+			=> Type switch
+			{
+				EdgeSegmentType.Linear => linear.Point(t),
+				EdgeSegmentType.Quadratic => quadratic.Point(t),
+				EdgeSegmentType.Cubic => cubic.Point(t),
+				_ => default
+			};
+
+		public Vector2 Direction(double t)
+			=> Type switch
+			{
+				EdgeSegmentType.Linear => linear.Direction(t),
+				EdgeSegmentType.Quadratic => quadratic.Direction(t),
+				EdgeSegmentType.Cubic => cubic.Direction(t),
+				_ => default
+			};
+
+		public SignedDistance SignedDistance(Vector2 origin, out double param)
+			=> Type switch
+			{
+				EdgeSegmentType.Linear => linear.SignedDistance(origin, out param),
+				EdgeSegmentType.Quadratic => quadratic.SignedDistance(origin, out param),
+				EdgeSegmentType.Cubic => cubic.SignedDistance(origin, out param),
+				_ => throw new InvalidOperationException()
+			};
+
+		public void Bound(ref double l, ref double b, ref double r, ref double t)
 		{
-			return new CubicSegment(p0, p1, p2, p3, edgeColor);
+			switch (Type)
+			{
+				case EdgeSegmentType.Linear:
+					linear.Bound(ref l, ref b, ref r, ref t);
+					break;
+				case EdgeSegmentType.Quadratic:
+					quadratic.Bound(ref l, ref b, ref r, ref t);
+					break;
+				case EdgeSegmentType.Cubic:
+					cubic.Bound(ref l, ref b, ref r, ref t);
+					break;
+			}
 		}
 
-		public abstract int Type();
-		public abstract Vector2[] ControlPoints();
-		public abstract Vector2 Point(double param);
-		public abstract Vector2 Direction(double param);
-		public abstract Vector2 DirectionChange(double param);
-		public abstract SignedDistance SignedDistance(Vector2 origin, out double param);
-		public virtual void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, double param)
+		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
+		{
+			switch (Type)
+			{
+				case EdgeSegmentType.Linear:
+					linear.SplitInThirds(out part0, out part1, out part2, Color);
+					break;
+				case EdgeSegmentType.Quadratic:
+					quadratic.SplitInThirds(out part0, out part1, out part2, Color);
+					break;
+				case EdgeSegmentType.Cubic:
+					cubic.SplitInThirds(out part0, out part1, out part2, Color);
+					break;
+				default:
+					throw new InvalidOperationException();
+			}
+		}
+
+		public EdgeSegment Reverse()
+		{
+			return Type switch
+			{
+				EdgeSegmentType.Linear => new EdgeSegment(linear.Reverse(), Color),
+				EdgeSegmentType.Quadratic => new EdgeSegment(quadratic.Reverse(), Color),
+				EdgeSegmentType.Cubic => new EdgeSegment(cubic.Reverse(), Color),
+				_ => this
+			};
+		}
+
+		public Vector2 DirectionChange(double param)
+		{
+			switch (Type)
+			{
+				case EdgeSegmentType.Linear:
+					return linear.DirectionChange(param);
+				case EdgeSegmentType.Quadratic:
+					return quadratic.DirectionChange(param);
+				case EdgeSegmentType.Cubic:
+					return cubic.DirectionChange(param);
+				default:
+					throw new InvalidOperationException();
+			}
+		}
+
+		public Vector2[] ControlPoints()
+		{
+			//TODO: Make these spans!??
+			switch (Type)
+			{
+				case EdgeSegmentType.Linear:
+					return [linear.P0, linear.P1];
+				case EdgeSegmentType.Quadratic:
+					return [quadratic.P0, quadratic.P1, quadratic.P2];
+				case EdgeSegmentType.Cubic:
+					return [cubic.P0, cubic.P1, cubic.P2, cubic.P3];
+				default:
+					throw new InvalidOperationException();
+			}
+		}
+
+		public void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, double param)
 		{
 			if (param < 0)
 			{
@@ -68,221 +183,181 @@ namespace SharpMSDF.Core
 				}
 			}
 		}
-		public abstract int ScanlineIntersections(Span<double> x, Span<int> dy, double y);
-		public abstract void Bound(ref double l, ref double b, ref double r, ref double t);
-		public abstract void Reverse();
-		public abstract void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2);
 
-		protected static void PointBounds(Vector2 p, ref double l, ref double b, ref double r, ref double t)
+		public EdgeSegment WithColor(EdgeColor color)
 		{
-			if (p.X < l)
+			return Type switch
 			{
-				l = p.X;
-			}
+				EdgeSegmentType.Linear => new EdgeSegment(linear, color),
+				EdgeSegmentType.Quadratic => new EdgeSegment(quadratic, color),
+				EdgeSegmentType.Cubic => new EdgeSegment(cubic, color),
+				_ => this
+			};
+		}
 
-			if (p.Y < b)
-			{
-				b = p.Y;
-			}
+		internal QuadraticSegment GetQuadratic()
+		{
+			return quadratic;
+		}
 
-			if (p.X > r)
-			{
-				r = p.X;
-			}
+		internal CubicSegment GetCubic()
+		{
+			return cubic;
+		}
 
-			if (p.Y > t)
+		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		{
+			switch (Type)
 			{
-				t = p.Y;
+				case EdgeSegmentType.Linear:
+					return linear.ScanlineIntersections(x, dy, y);
+				case EdgeSegmentType.Quadratic:
+					return quadratic.ScanlineIntersections(x, dy, y);
+				case EdgeSegmentType.Cubic:
+					return cubic.ScanlineIntersections(x, dy, y);
+				default:
+					throw new InvalidOperationException();
 			}
 		}
 	}
 
-	public class LinearSegment : EdgeSegment
+	public struct LinearSegment
 	{
-		public const int EDGE_TYPE = 1;
-		public readonly Vector2[] P = new Vector2[2];
+		public Vector2 P0;
+		public Vector2 P1;
 
-		public LinearSegment(Vector2 p0, Vector2 p1, EdgeColor c = EdgeColor.White) : base(c)
+		public LinearSegment(Vector2 p0, Vector2 p1)
 		{
-			P[0] = p0; P[1] = p1;
+			P0 = p0;
+			P1 = p1;
 		}
 
-		public override int Type()
-		{
-			return EDGE_TYPE;
-		}
+		public Vector2 Point(double t) => Arithmetic.Mix(P0, P1, t);
+		public Vector2 Direction(double _) => P1 - P0;
 
-		public override Vector2[] ControlPoints()
+		public SignedDistance SignedDistance(Vector2 origin, out double param)
 		{
-			return P;
-		}
-
-		public override Vector2 Point(double t)
-		{
-			return Arithmetic.Mix(P[0], P[1], t);
-		}
-
-		public override Vector2 Direction(double t)
-		{
-			return P[1] - P[0];
-		}
-
-		public override Vector2 DirectionChange(double t)
-		{
-			return new Vector2 { X = 0, Y = 0 };
-		}
-
-		public double Length()
-		{
-			return (P[1] - P[0]).Length();
-		}
-
-		public override SignedDistance SignedDistance(Vector2 origin, out double param)
-		{
-			Vector2 aq = origin - P[0];
-			Vector2 ab = P[1] - P[0];
+			Vector2 aq = origin - P0;
+			Vector2 ab = P1 - P0;
 			param = Vector2.Dot(aq, ab) / Vector2.Dot(ab, ab);
-			Vector2 eq = (param > .5) ? P[1] - origin : P[0] - origin;
+			Vector2 eq = (param > 0.5) ? P1 - origin : P0 - origin;
 			double endpointDist = eq.Length();
-			if (param is > 0 and < 1)
+
+			if (param > 0 && param < 1)
 			{
 				double ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
 				if (Math.Abs(ortho) < endpointDist)
-				{
 					return new SignedDistance(ortho, 0);
-				}
 			}
+
 			double sign = Arithmetic.NonZeroSign(Vector2.Cross(aq, ab));
 			return new SignedDistance(sign * endpointDist,
 				Math.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
 		}
 
-		public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public void Bound(ref double l, ref double b, ref double r, ref double t)
 		{
-			if ((y >= P[0].Y && y < P[1].Y) || (y >= P[1].Y && y < P[0].Y))
+			if (P0.X < l)
 			{
-				double param = (y - P[0].Y) / (P[1].Y - P[0].Y);
-				x[0] = Arithmetic.Mix(P[0].X, P[1].X, param);
-				dy[0] = Arithmetic.Sign(P[1].Y - P[0].Y);
+				l = P0.X;
+			}
+
+			if (P0.Y < b)
+			{
+				b = P0.Y;
+			}
+
+			if (P0.X > r)
+			{
+				r = P0.X;
+			}
+
+			if (P0.Y > t)
+			{
+				t = P0.Y;
+			}
+
+			if (P1.X < l)
+			{
+				l = P1.X;
+			}
+
+			if (P1.Y < b)
+			{
+				b = P1.Y;
+			}
+
+			if (P1.X > r)
+			{
+				r = P1.X;
+			}
+
+			if (P1.Y > t)
+			{
+				t = P1.Y;
+			}
+		}
+
+		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2, EdgeColor color)
+		{
+			part0 = new EdgeSegment(new LinearSegment(P0, Point(1.0 / 3.0)), color);
+			part1 = new EdgeSegment(new LinearSegment(Point(1.0 / 3.0), Point(2.0 / 3.0)), color);
+			part2 = new EdgeSegment(new LinearSegment(Point(2.0 / 3.0), P1), color);
+		}
+
+		public LinearSegment Reverse()
+		{
+			return new LinearSegment(P1, P0);
+		}
+
+		public Vector2 DirectionChange(double t)
+		{
+			return new Vector2 { X = 0, Y = 0 };
+		}
+
+		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		{
+			if ((y >= P0.Y && y < P1.Y) || (y >= P1.Y && y < P0.Y))
+			{
+				double param = (y - P0.Y) / (P1.Y - P0.Y);
+				x[0] = Arithmetic.Mix(P0.X, P1.X, param);
+				dy[0] = Arithmetic.Sign(P1.Y - P0.Y);
 				return 1;
 			}
 			return 0;
 		}
-
-		public override void Bound(ref double l, ref double b, ref double r, ref double t)
-		{
-			if (P[0].X < l)
-			{
-				l = P[0].X;
-			}
-
-			if (P[0].Y < b)
-			{
-				b = P[0].Y;
-			}
-
-			if (P[0].X > r)
-			{
-				r = P[0].X;
-			}
-
-			if (P[0].Y > t)
-			{
-				t = P[0].Y;
-			}
-
-			if (P[1].X < l)
-			{
-				l = P[1].X;
-			}
-
-			if (P[1].Y < b)
-			{
-				b = P[1].Y;
-			}
-
-			if (P[1].X > r)
-			{
-				r = P[1].X;
-			}
-
-			if (P[1].Y > t)
-			{
-				t = P[1].Y;
-			}
-		}
-
-		public override void Reverse()
-		{
-			(P[1], P[0]) = (P[0], P[1]);
-		}
-
-		public override void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
-		{
-			part0 = new LinearSegment(P[0], Point(1.0 / 3.0), Color);
-			part1 = new LinearSegment(Point(1.0 / 3.0), Point(2.0 / 3.0), Color);
-			part2 = new LinearSegment(Point(2.0 / 3.0), P[1], Color);
-		}
 	}
 
-	public class QuadraticSegment : EdgeSegment
+	public struct QuadraticSegment
 	{
-		public const int EDGE_TYPE = 2;
-		public readonly Vector2[] P = new Vector2[3];
+		public Vector2 P0;
+		public Vector2 P1;
+		public Vector2 P2;
 
-		public QuadraticSegment(Vector2 p0, Vector2 p1, Vector2 p2, EdgeColor c = EdgeColor.White) : base(c)
+		public QuadraticSegment(Vector2 p0, Vector2 p1, Vector2 p2)
 		{
-			P[0] = p0; P[1] = p1; P[2] = p2;
-		}
-
-		public override int Type()
-		{
-			return EDGE_TYPE;
+			P0 = p0;
+			P1 = p1;
+			P2 = p2;
 		}
 
-		public override Vector2[] ControlPoints()
+		public Vector2 Point(double t)
 		{
-			return P;
+			return Arithmetic.Mix(Arithmetic.Mix(P0, P1, t), Arithmetic.Mix(P1, P2, t), t);
 		}
 
-		public override Vector2 Point(double t)
+		public Vector2 Direction(double t)
 		{
-			return Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], t), Arithmetic.Mix(P[1], P[2], t), t);
+			Vector2 tangent = Arithmetic.Mix(P1 - P0, P2 - P1, t);
+			return tangent.Length() == 0 ? P2 - P0 : tangent;
 		}
 
-		public override Vector2 Direction(double t)
-		{
-			Vector2 tangent = Arithmetic.Mix(P[1] - P[0], P[2] - P[1], t);
-			return tangent.Length() == 0 ? P[2] - P[0] : tangent;
-		}
-		public override Vector2 DirectionChange(double t)
-		{
-			return new Vector2
-			{
-				X = (P[2] - P[1]).X - (P[1] - P[0]).X,
-				Y = (P[2] - P[1]).Y - (P[1] - P[0]).Y
-			};
-		}
-
-		public double Length()
-		{
-			Vector2 ab = P[1] - P[0];
-			Vector2 br = P[2] - P[1] - ab;
-			double abab = Vector2.Dot(ab, ab), abbr = Vector2.Dot(ab, br), brbr = Vector2.Dot(br, br);
-			double abLen = Math.Sqrt(abab), brLen = Math.Sqrt(brbr);
-			double crs = Vector2.Cross(ab, br);
-			double h = Math.Sqrt(abab + (2 * abbr) + brbr);
-			return (
-				(brLen * (((abbr + brbr) * h) - (abbr * abLen))) +
-				(crs * crs * Math.Log(((brLen * h) + abbr + brbr) / ((brLen * abLen) + abbr)))
-			) / (brbr * brLen);
-		}
-		public override SignedDistance SignedDistance(Vector2 origin, out double param)
+		public SignedDistance SignedDistance(Vector2 origin, out double param)
 		{
 			// compute helper vectors
-			Vector2 qa = P[0] - origin;
-			Vector2 ab = P[1] - P[0];
-			Vector2 br = P[2] - P[1] - ab;
+			Vector2 qa = P0 - origin;
+			Vector2 ab = P1 - P0;
+			Vector2 br = P2 - P1 - ab;
 
 			// cubic coefficients for |Q(param)|² derivative = 0
 			double a = Vector2.Dot(br, br);
@@ -301,11 +376,11 @@ namespace SharpMSDF.Core
 
 			// check endpoint B (param=1)
 			epDir = Direction(1);
-			double distB = new Vector2(P[2].X - origin.X, P[2].Y - origin.Y).Length();
+			double distB = new Vector2(P2.X - origin.X, P2.Y - origin.Y).Length();
 			if (distB < Math.Abs(minDistance))
 			{
-				minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, new Vector2(P[2].X - origin.X, P[2].Y - origin.Y))) * distB;
-				param = Vector2.Dot(new Vector2(origin.X - P[1].X, origin.Y - P[1].Y), epDir)
+				minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, new Vector2(P2.X - origin.X, P2.Y - origin.Y))) * distB;
+				param = Vector2.Dot(new Vector2(origin.X - P1.X, origin.Y - P1.Y), epDir)
 						/ Vector2.Dot(epDir, epDir);
 			}
 
@@ -344,7 +419,7 @@ namespace SharpMSDF.Core
 			else
 			{
 				Vector2 dir1 = Direction(1).Normalize();
-				Vector2 bq = new Vector2(P[2].X - origin.X, P[2].Y - origin.Y).Normalize();
+				Vector2 bq = new Vector2(P2.X - origin.X, P2.Y - origin.Y).Normalize();
 				return new SignedDistance(
 					minDistance,
 					Math.Abs(Vector2.Dot(dir1, bq))
@@ -352,14 +427,89 @@ namespace SharpMSDF.Core
 			}
 		}
 
-		public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public void Bound(ref double l, ref double b, ref double r, ref double t)
+		{
+			PointBounds(P0, ref l, ref b, ref r, ref t);
+			PointBounds(P2, ref l, ref b, ref r, ref t);
+			Vector2 bot = P1 - P0 - (P2 - P1);
+			if (bot.X != 0)
+			{
+				double param = (P1.X - P0.X) / bot.X;
+				if (param is > 0 and < 1)
+				{
+					PointBounds(Point(param), ref l, ref b, ref r, ref t);
+				}
+			}
+			if (bot.Y != 0)
+			{
+				double param = (P1.Y - P0.Y) / bot.Y;
+				if (param is > 0 and < 1)
+				{
+					PointBounds(Point(param), ref l, ref b, ref r, ref t);
+				}
+			}
+		}
+
+		private static void PointBounds(Vector2 p, ref double l, ref double b, ref double r, ref double t)
+		{
+			if (p.X < l)
+			{
+				l = p.X;
+			}
+
+			if (p.Y < b)
+			{
+				b = p.Y;
+			}
+
+			if (p.X > r)
+			{
+				r = p.X;
+			}
+
+			if (p.Y > t)
+			{
+				t = p.Y;
+			}
+		}
+
+		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2, EdgeColor color)
+		{
+			part0 = new EdgeSegment(new QuadraticSegment(P0, Arithmetic.Mix(P0, P1, 1 / 3.0), Point(1 / 3.0)), color);
+			part1 = new EdgeSegment(new QuadraticSegment(Point(1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P0, P1, 5 / 9.0), Arithmetic.Mix(P1, P2, 4 / 9.0), .5), Point(2 / 3.0)), color);
+			part2 = new EdgeSegment(new QuadraticSegment(Point(2 / 3.0), Arithmetic.Mix(P1, P2, 2 / 3.0), P2), color);
+		}
+
+		public QuadraticSegment Reverse()
+		{
+			return new QuadraticSegment(P2, P1, P0);
+		}
+
+		public Vector2 DirectionChange(double t)
+		{
+			return new Vector2
+			{
+				X = (P2 - P1).X - (P1 - P0).X,
+				Y = (P2 - P1).Y - (P1 - P0).Y
+			};
+		}
+
+		public CubicSegment ConvertToCubic()
+		{
+			return new CubicSegment(P0,
+							 Arithmetic.Mix(P0, P1, 2.0 / 3.0),
+							 Arithmetic.Mix(P1, P2, 1.0 / 3.0),
+							 P2);
+		}
+
+		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
 		{
 			int total = 0;
-			int nextDY = y > P[0].Y ? 1 : -1;
-			x[total] = P[0].X;
-			if (P[0].Y == y)
+			int nextDY = y > P0.Y ? 1 : -1;
+			x[total] = P0.X;
+			if (P0.Y == y)
 			{
-				if (P[0].Y < P[1].Y || (P[0].Y == P[1].Y && P[0].Y < P[2].Y))
+				if (P0.Y < P1.Y || (P0.Y == P1.Y && P0.Y < P2.Y))
 				{
 					dy[total++] = 1;
 				}
@@ -369,10 +519,10 @@ namespace SharpMSDF.Core
 				}
 			}
 			{
-				Vector2 ab = P[1] - P[0];
-				Vector2 br = P[2] - P[1] - ab;
+				Vector2 ab = P1 - P0;
+				Vector2 br = P2 - P1 - ab;
 				Span<double> t = stackalloc double[2];
-				int solutions = EquationSolver.SolveQuadratic(t, br.Y, 2 * ab.Y, P[0].Y - y);
+				int solutions = EquationSolver.SolveQuadratic(t, br.Y, 2 * ab.Y, P0.Y - y);
 				// Sort solutions
 				if (solutions >= 2 && t[0] > t[1])
 				{
@@ -383,7 +533,7 @@ namespace SharpMSDF.Core
 				{
 					if (t[i] is >= 0 and <= 1)
 					{
-						x[total] = P[0].X + (2 * t[i] * ab.X) + (t[i] * t[i] * br.X);
+						x[total] = P0.X + (2 * t[i] * ab.X) + (t[i] * t[i] * br.X);
 						if (nextDY * (ab.Y + (t[i] * br.Y)) >= 0)
 						{
 							dy[total++] = nextDY;
@@ -392,16 +542,16 @@ namespace SharpMSDF.Core
 					}
 				}
 			}
-			if (P[2].Y == y)
+			if (P2.Y == y)
 			{
 				if (nextDY > 0 && total > 0)
 				{
 					--total;
 					nextDY = -1;
 				}
-				if ((P[2].Y < P[1].Y || (P[2].Y == P[1].Y && P[2].Y < P[0].Y)) && total < 2)
+				if ((P2.Y < P1.Y || (P2.Y == P1.Y && P2.Y < P0.Y)) && total < 2)
 				{
-					x[total] = P[2].X;
+					x[total] = P2.X;
 					if (nextDY < 0)
 					{
 						dy[total++] = -1;
@@ -409,7 +559,7 @@ namespace SharpMSDF.Core
 					}
 				}
 			}
-			if (nextDY != (y >= P[2].Y ? 1 : -1))
+			if (nextDY != (y >= P2.Y ? 1 : -1))
 			{
 				if (total > 0)
 				{
@@ -417,9 +567,9 @@ namespace SharpMSDF.Core
 				}
 				else
 				{
-					if (Math.Abs(P[2].Y - y) < Math.Abs(P[0].Y - y))
+					if (Math.Abs(P2.Y - y) < Math.Abs(P0.Y - y))
 					{
-						x[total] = P[2].X;
+						x[total] = P2.X;
 					}
 
 					dy[total++] = nextDY;
@@ -428,118 +578,62 @@ namespace SharpMSDF.Core
 			return total;
 		}
 
-		public override void Bound(ref double l, ref double b, ref double r, ref double t)
-		{
-			PointBounds(P[0], ref l, ref b, ref r, ref t);
-			PointBounds(P[2], ref l, ref b, ref r, ref t);
-			Vector2 bot = P[1] - P[0] - (P[2] - P[1]);
-			if (bot.X != 0)
-			{
-				double param = (P[1].X - P[0].X) / bot.X;
-				if (param is > 0 and < 1)
-				{
-					PointBounds(Point(param), ref l, ref b, ref r, ref t);
-				}
-			}
-			if (bot.Y != 0)
-			{
-				double param = (P[1].Y - P[0].Y) / bot.Y;
-				if (param is > 0 and < 1)
-				{
-					PointBounds(Point(param), ref l, ref b, ref r, ref t);
-				}
-			}
-		}
-
-		public override void Reverse()
-		{
-			(P[0], P[2]) = (P[2], P[0]);
-		}
-
-		public override void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
-		{
-			part0 = new QuadraticSegment(P[0], Arithmetic.Mix(P[0], P[1], 1 / 3.0), Point(1 / 3.0), Color);
-			part1 = new QuadraticSegment(Point(1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 5 / 9.0), Arithmetic.Mix(P[1], P[2], 4 / 9.0), .5), Point(2 / 3.0), Color);
-			part2 = new QuadraticSegment(Point(2 / 3.0), Arithmetic.Mix(P[1], P[2], 2 / 3.0), P[2], Color);
-		}
-
-		public EdgeSegment ConvertToCubic()
-		{
-			return new CubicSegment(P[0],
-							 Arithmetic.Mix(P[0], P[1], 2.0 / 3.0),
-							 Arithmetic.Mix(P[1], P[2], 1.0 / 3.0),
-							 P[2],
-							 Color);
-		}
 	}
 
-	public class CubicSegment : EdgeSegment
+	public struct CubicSegment
 	{
-		public const int EDGE_TYPE = 3;
-		public readonly Vector2[] P = new Vector2[4];
+		public const int MSDFGEN_CUBIC_SEARCH_STARTS = 4;
+		public const int MSDFGEN_CUBIC_SEARCH_STEPS = 4;
 
-		public CubicSegment(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3, EdgeColor c = EdgeColor.White) : base(c)
+
+		public Vector2 P0;
+		public Vector2 P1;
+		public Vector2 P2;
+		public Vector2 P3;
+
+		public CubicSegment(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3)
 		{
-			P[0] = p0; P[1] = p1; P[2] = p2; P[3] = p3;
+			P0 = p0;
+			P1 = p1;
+			P2 = p2;
+			P3 = p3;
 		}
 
-		public override int Type()
+		public Vector2 Point(double t)
 		{
-			return EDGE_TYPE;
+			Vector2 a = Arithmetic.Mix(P0, P1, t);
+			Vector2 b = Arithmetic.Mix(P1, P2, t);
+			Vector2 c = Arithmetic.Mix(P2, P3, t);
+			Vector2 ab = Arithmetic.Mix(a, b, t);
+			Vector2 bc = Arithmetic.Mix(b, c, t);
+			return Arithmetic.Mix(ab, bc, t);
 		}
 
-		public override Vector2[] ControlPoints()
+		public Vector2 Direction(double t)
 		{
-			return P;
+			Vector2 ab = Arithmetic.Mix(P1 - P0, P2 - P1, t);
+			Vector2 bc = Arithmetic.Mix(P2 - P1, P3 - P2, t);
+			Vector2 tangent = Arithmetic.Mix(ab, bc, t);
+			return tangent.Length() == 0 ? (t == 0 ? P2 - P0 : P3 - P1) : tangent;
 		}
 
-		public override Vector2 Point(double t)
+		public SignedDistance SignedDistance(Vector2 origin, out double param)
 		{
-			Vector2 p12 = Arithmetic.Mix(P[1], P[2], t);
-			return Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], t), p12, t),
-							   Arithmetic.Mix(p12, Arithmetic.Mix(P[2], P[3], t), t), t);
-		}
-		public override Vector2 Direction(double t)
-		{
-			Vector2 tangent = Arithmetic.Mix(Arithmetic.Mix(P[1] - P[0], P[2] - P[1], t),
-								   Arithmetic.Mix(P[2] - P[1], P[3] - P[2], t), t);
-			if (tangent.Length() == 0)
-			{
-				if (t == 0)
-				{
-					return P[2] - P[0];
-				}
-
-				if (t == 1)
-				{
-					return P[3] - P[1];
-				}
-			}
-			return tangent;
-		}
-		public override Vector2 DirectionChange(double t)
-		{
-			return Arithmetic.Mix(P[2] - P[1] - (P[1] - P[0]),
-				P[3] - P[2] - (P[2] - P[1]), t);
-		}
-
-		public override SignedDistance SignedDistance(Vector2 origin, out double param)
-		{
-			Vector2 qa = P[0] - origin;
-			Vector2 ab = P[1] - P[0];
-			Vector2 br = P[2] - P[1] - ab;
-			Vector2 as_ = P[3] - P[2] - (P[2] - P[1]) - br;
+			Vector2 qa = P0 - origin;
+			Vector2 ab = P1 - P0;
+			Vector2 br = P2 - P1 - ab;
+			Vector2 as_ = P3 - P2 - (P2 - P1) - br;
 
 			Vector2 epDir = Direction(0);
 			double minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length(); // distance from A
 			param = -Vector2.Dot(qa, epDir) / Vector2.Dot(epDir, epDir);
 			{
 				epDir = Direction(1);
-				double distance = (P[3] - origin).Length(); // distance from B
+				double distance = (P3 - origin).Length(); // distance from B
 				if (distance < Math.Abs(minDistance))
 				{
-					minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, P[3] - origin)) * distance;
-					param = Vector2.Dot(epDir - (P[3] - origin), epDir) / Vector2.Dot(epDir, epDir);
+					minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, P3 - origin)) * distance;
+					param = Vector2.Dot(epDir - (P3 - origin), epDir) / Vector2.Dot(epDir, epDir);
 				}
 			}
 			// Iterative minimum distance search
@@ -575,18 +669,76 @@ namespace SharpMSDF.Core
 
 			return param < .5
 				? new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Direction(0).Normalize(), qa.Normalize())))
-				: new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Direction(1).Normalize(), (P[3] - origin).Normalize())));
-
+				: new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Direction(1).Normalize(), (P3 - origin).Normalize())));
 		}
 
-		public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public void Bound(ref double l, ref double b, ref double r, ref double t)
+		{
+			PointBounds(P0, ref l, ref b, ref r, ref t);
+			PointBounds(P3, ref l, ref b, ref r, ref t);
+			Vector2 a0 = P1 - P0;
+			Vector2 a1 = 2 * (P2 - P1 - a0);
+			Vector2 a2 = P3 - (3 * P2) + (3 * P1) - P0;
+			Span<double> prms = stackalloc double[2];
+			int solutions;
+			solutions = EquationSolver.SolveQuadratic(prms, a2.X, a1.X, a0.X);
+			for (int i = 0; i < solutions; ++i)
+			{
+				if (prms[i] is > 0 and < 1)
+				{
+					PointBounds(Point(prms[i]), ref l, ref b, ref r, ref t);
+				}
+			}
+
+			solutions = EquationSolver.SolveQuadratic(prms, a2.Y, a1.Y, a0.Y);
+			for (int i = 0; i < solutions; ++i)
+			{
+				if (prms[i] is > 0 and < 1)
+				{
+					PointBounds(Point(prms[i]), ref l, ref b, ref r, ref t);
+				}
+			}
+
+			PointBounds(P0, ref l, ref b, ref r, ref t);
+		}
+
+		private static void PointBounds(Vector2 p, ref double l, ref double b, ref double r, ref double t)
+		{
+			if (p.X < l) l = p.X;
+			if (p.Y < b) b = p.Y;
+			if (p.X > r) r = p.X;
+			if (p.Y > t) t = p.Y;
+		}
+
+		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2, EdgeColor color)
+		{
+			part0 = new EdgeSegment(new CubicSegment(P0, P0 == P1 ? P0 : Arithmetic.Mix(P0, P1, 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P0, P1, 1 / 3.0), Arithmetic.Mix(P1, P2, 1 / 3.0), 1 / 3.0), Point(1 / 3.0)), color);
+			part1 = new EdgeSegment(new CubicSegment(Point(1 / 3.0),
+				Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P0, P1, 1 / 3.0), Arithmetic.Mix(P1, P2, 1 / 3.0), 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P1, P2, 1 / 3.0), Arithmetic.Mix(P2, P3, 1 / 3.0), 1 / 3.0), 2 / 3.0),
+				Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P0, P1, 2 / 3.0), Arithmetic.Mix(P1, P2, 2 / 3.0), 2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P1, P2, 2 / 3.0), Arithmetic.Mix(P2, P3, 2 / 3.0), 2 / 3.0), 1 / 3.0),
+				Point(2 / 3.0)), color);
+			part2 = new EdgeSegment(new CubicSegment(Point(2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P1, P2, 2 / 3.0), Arithmetic.Mix(P2, P3, 2 / 3.0), 2 / 3.0), P2 == P3 ? P3 : Arithmetic.Mix(P2, P3, 2 / 3.0), P3), color);
+		}
+
+		public CubicSegment Reverse()
+		{
+			return new CubicSegment(P3, P2, P1, P0);
+		}
+
+		public Vector2 DirectionChange(double t)
+		{
+			return Arithmetic.Mix(P2 - P1 - (P1 - P0),
+				P3 - P2 - (P2 - P1), t);
+		}
+
+		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
 		{
 			int total = 0;
-			int nextDY = y > P[0].Y ? 1 : -1;
-			x[total] = P[0].X;
-			if (P[0].Y == y)
+			int nextDY = y > P0.Y ? 1 : -1;
+			x[total] = P0.X;
+			if (P0.Y == y)
 			{
-				if (P[0].Y < P[1].Y || (P[0].Y == P[1].Y && (P[0].Y < P[2].Y || (P[0].Y == P[2].Y && P[0].Y < P[3].Y))))
+				if (P0.Y < P1.Y || (P0.Y == P1.Y && (P0.Y < P2.Y || (P0.Y == P2.Y && P0.Y < P3.Y))))
 				{
 					dy[total++] = 1;
 				}
@@ -596,11 +748,11 @@ namespace SharpMSDF.Core
 				}
 			}
 			{
-				Vector2 ab = P[1] - P[0];
-				Vector2 br = P[2] - P[1] - ab;
-				Vector2 as_ = P[3] - P[2] - (P[2] - P[1]) - br;
+				Vector2 ab = P1 - P0;
+				Vector2 br = P2 - P1 - ab;
+				Vector2 as_ = P3 - P2 - (P2 - P1) - br;
 				Span<double> t = stackalloc double[3];
-				int solutions = EquationSolver.SolveCubic(t, as_.Y, 3 * br.Y, 3 * ab.Y, P[0].Y - y);
+				int solutions = EquationSolver.SolveCubic(t, as_.Y, 3 * br.Y, 3 * ab.Y, P0.Y - y);
 				// Sort solutions
 				if (solutions >= 2)
 				{
@@ -622,7 +774,7 @@ namespace SharpMSDF.Core
 				{
 					if (t[i] is >= 0 and <= 1)
 					{
-						x[total] = P[0].X + (3 * t[i] * ab.X) + (3 * t[i] * t[i] * br.X) + (t[i] * t[i] * t[i] * as_.X);
+						x[total] = P0.X + (3 * t[i] * ab.X) + (3 * t[i] * t[i] * br.X) + (t[i] * t[i] * t[i] * as_.X);
 						if (nextDY * (ab.Y + (2 * t[i] * br.Y) + (t[i] * t[i] * as_.Y)) >= 0)
 						{
 							dy[total++] = nextDY;
@@ -631,16 +783,16 @@ namespace SharpMSDF.Core
 					}
 				}
 			}
-			if (P[3].Y == y)
+			if (P3.Y == y)
 			{
 				if (nextDY > 0 && total > 0)
 				{
 					--total;
 					nextDY = -1;
 				}
-				if ((P[3].Y < P[2].Y || (P[3].Y == P[2].Y && (P[3].Y < P[1].Y || (P[3].Y == P[1].Y && P[3].Y < P[0].Y)))) && total < 3)
+				if ((P3.Y < P2.Y || (P3.Y == P2.Y && (P3.Y < P1.Y || (P3.Y == P1.Y && P3.Y < P0.Y)))) && total < 3)
 				{
-					x[total] = P[3].X;
+					x[total] = P3.X;
 					if (nextDY < 0)
 					{
 						dy[total++] = -1;
@@ -648,7 +800,7 @@ namespace SharpMSDF.Core
 					}
 				}
 			}
-			if (nextDY != (y >= P[3].Y ? 1 : -1))
+			if (nextDY != (y >= P3.Y ? 1 : -1))
 			{
 				if (total > 0)
 				{
@@ -656,62 +808,15 @@ namespace SharpMSDF.Core
 				}
 				else
 				{
-					if (Math.Abs(P[3].Y - y) < Math.Abs(P[0].Y - y))
+					if (Math.Abs(P3.Y - y) < Math.Abs(P0.Y - y))
 					{
-						x[total] = P[3].X;
+						x[total] = P3.X;
 					}
 
 					dy[total++] = nextDY;
 				}
 			}
 			return total;
-		}
-
-		public override void Bound(ref double l, ref double b, ref double r, ref double t)
-		{
-			PointBounds(P[0], ref l, ref b, ref r, ref t);
-			PointBounds(P[3], ref l, ref b, ref r, ref t);
-			Vector2 a0 = P[1] - P[0];
-			Vector2 a1 = 2 * (P[2] - P[1] - a0);
-			Vector2 a2 = P[3] - (3 * P[2]) + (3 * P[1]) - P[0];
-			Span<double> prms = stackalloc double[2];
-			int solutions;
-			solutions = EquationSolver.SolveQuadratic(prms, a2.X, a1.X, a0.X);
-			for (int i = 0; i < solutions; ++i)
-			{
-				if (prms[i] is > 0 and < 1)
-				{
-					PointBounds(Point(prms[i]), ref l, ref b, ref r, ref t);
-				}
-			}
-
-			solutions = EquationSolver.SolveQuadratic(prms, a2.Y, a1.Y, a0.Y);
-			for (int i = 0; i < solutions; ++i)
-			{
-				if (prms[i] is > 0 and < 1)
-				{
-					PointBounds(Point(prms[i]), ref l, ref b, ref r, ref t);
-				}
-			}
-
-			PointBounds(P[0], ref l, ref b, ref r, ref t);
-		}
-
-		public override void Reverse()
-		{
-			(P[0], P[3]) = (P[3], P[0]);
-			(P[1], P[2]) = (P[2], P[1]);
-		}
-
-		public override void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
-		{
-			part0 = new CubicSegment(P[0], P[0] == P[1] ? P[0] : Arithmetic.Mix(P[0], P[1], 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 1 / 3.0), Arithmetic.Mix(P[1], P[2], 1 / 3.0), 1 / 3.0), Point(1 / 3.0), Color);
-			part1 = new CubicSegment(Point(1 / 3.0),
-				Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 1 / 3.0), Arithmetic.Mix(P[1], P[2], 1 / 3.0), 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 1 / 3.0), Arithmetic.Mix(P[2], P[3], 1 / 3.0), 1 / 3.0), 2 / 3.0),
-				Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 2 / 3.0), Arithmetic.Mix(P[1], P[2], 2 / 3.0), 2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 2 / 3.0), Arithmetic.Mix(P[2], P[3], 2 / 3.0), 2 / 3.0), 1 / 3.0),
-				Point(2 / 3.0), Color);
-			part2 = new CubicSegment(Point(2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 2 / 3.0), Arithmetic.Mix(P[2], P[3], 2 / 3.0), 2 / 3.0), P[2] == P[3] ? P[3] : Arithmetic.Mix(P[2], P[3], 2 / 3.0), P[3], Color);
-
 		}
 	}
 }
