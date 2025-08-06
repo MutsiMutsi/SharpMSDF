@@ -47,38 +47,33 @@ namespace SharpMSDF.Core
 		/// <summary>
 		/// Generates a conventional single-channel signed distance field.
 		/// </summary>
-		public static unsafe void GenerateDistanceField(BitmapRef output, Shape shape, SDFTransformation transformation)
+		public static unsafe void GenerateDistanceField(BitmapView output, Shape shape, SDFTransformation transformation)
 		{
-			// 1. Create the converter 
-			// TODO: potential of less H-Allocation
+			// Create converter and distanceFinder (same)
 			DistancePixelConversionMulti converter = new() { Mapping = transformation.DistanceMapping };
-			// 2. Create your combiner‐driven distance finder
 			ShapeMultiDistanceFinder distanceFinder = new(shape);
 
-			// 3. Parallel loop over rows
-			bool rightToLeft = false;
+			// Assume BitmapView exposes a method/property to get the Span<float>
+			Span<float> pixels = output.GetPixelSpan();
 
-			fixed (float* arrayFixed = output.Pixels)
+			fixed (float* pixelsPtr = pixels)
 			{
-				// used to trick compiler into thinking this is not fixed when dealing with lambda expression
-				float* pixels = arrayFixed;
+				float* pixelsRaw = pixelsPtr;
 
-				for (int y = 0; y < output.SubHeight; y++)
-				//Parallel.For(0, output.SubHeight, y =>
+				bool rightToLeft = false;
+				for (int y = 0; y < output.Height; y++)
 				{
-					int row = shape.InverseYAxis ? output.SubHeight - y - 1 : y;
-					for (int col = 0; col < output.SubWidth; col++)
+					int row = shape.InverseYAxis ? output.Height - y - 1 : y;
+					for (int col = 0; col < output.Width; col++)
 					{
-						int x = rightToLeft ? output.SubWidth - col - 1 : col;
-						// unproject into Shape‐space
+						int x = rightToLeft ? output.Width - col - 1 : col;
 						Vector2 p = transformation.Projection.Unproject(new Vector2(x + .5f, y + .5f));
-						// get the signed‐distance
 						MultiDistance dist = distanceFinder.Distance(p);
-						// write into the pixel Buffer
-						float* pixel = pixels + output.GetIndex(x, row);
+						// output.GetIndex adjusted for BitmapView’s internal logic
+						float* pixel = pixelsRaw + output.GetIndex(x, row);
 						converter.Convert(pixel, dist, x, row);
-					}
-					rightToLeft = !rightToLeft; // flip for “staggered” ordering
+					} 
+					rightToLeft = !rightToLeft;
 				}
 			}
 		}
@@ -112,7 +107,7 @@ namespace SharpMSDF.Core
 		/// <summary>
 		/// Generates a multi-channel signed distance field. Edge colors must be assigned first! (See edgeColoringSimple)
 		/// </summary>
-		public static void GenerateMSDF(BitmapRef output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
+		public static void GenerateMSDF(BitmapView output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
 		{
 			GenerateDistanceField(output, shape, transformation);
 			//MSDFErrorCorrection.ErrorCorrection(output, shape, transformation, config);

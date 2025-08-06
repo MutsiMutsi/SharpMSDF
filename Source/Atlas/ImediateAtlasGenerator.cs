@@ -76,11 +76,21 @@ namespace SharpMSDF.Atlas
 				if (!glyph.IsWhitespace())
 				{
 					glyph.GetBoxRect(out int l, out int b, out int w, out int h);
-					float[] span = _GlyphBuffer.GetRange(threadNo * threadBufferSize, threadBufferSize).ToArray();
-					BitmapRef glyphBitmap = new(span, w, h, N);
-					GEN_FN(glyphBitmap, glyph, threadAttributes[threadNo]);
-					BitmapConstRef constRef = new(glyphBitmap);
-					Storage.Put(l, b, constRef);
+
+					// Step 1: allocate float[] buffer that owns pixels
+					float[] pixelBuffer = _GlyphBuffer.GetRange(threadNo * threadBufferSize, threadBufferSize).ToArray();
+
+					// Step 2: create Span<float> over that buffer
+					Span<float> pixelSpan = pixelBuffer.AsSpan(0, w * h * BitmapView.Channels);
+
+					// Step 3: construct BitmapView (view only, does not own pixels)
+					BitmapView glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
+
+					// Use your generation function with BitmapView
+					GEN_FN(glyphBitmapView, glyph, threadAttributes[threadNo]);
+
+					// If Storage.Put accepts BitmapView or readonly BitmapView, pass it
+					Storage.Put(l, b, glyphBitmapView);
 				}
 				return true;
 			}, glyphs.Count);

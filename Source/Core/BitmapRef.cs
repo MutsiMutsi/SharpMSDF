@@ -1,75 +1,42 @@
-﻿using SkiaSharp;
-
-namespace SharpMSDF.Core
+﻿public readonly ref struct BitmapView
 {
-	public struct BitmapRef
+	private readonly Span<float> _pixels;   // full pixel buffer (must be pinned or in scope)
+	private readonly int _fullWidth;        // full image width
+	private readonly int _subX, _subY;      // sub-rectangle offset
+	public readonly int Width, Height;      // sub-rectangle size
+	public const int Channels = 3;
+
+	public int SubWidth => Width;
+	public int SubHeight => Height;
+
+	public BitmapView(Span<float> pixels, int fullWidth, int fullHeight,
+					  int subX, int subY, int subWidth, int subHeight)
 	{
-		/// <summary>
-		/// Bitmap array that we reference from
-		/// </summary>
-		public readonly float[] Pixels;
-		public readonly int OriginalWidth, OriginalHeight;
-		public readonly int SubX, SubY, SubWidth, SubHeight;
-		/// <summary>
-		/// Number of channels
-		/// </summary>
-		public readonly int N;
-
-		public BitmapRef(Bitmap bitmap, int subX = 0, int subY = 0, int subW = -1, int subH = -1)
-			: this(bitmap.Pixels, bitmap.Width, bitmap.Height, bitmap.N, subX, subY, subW, subH) { }
-
-		public BitmapRef(float[] pixels, int width, int height, int n = 1, int subX = 0, int subY = 0, int subW = -1, int subH = -1)
-		{
-			OriginalWidth = width;
-			OriginalHeight = height;
-			SubX = subX;
-			SubY = subY;
-			SubWidth = (subW < 0) ? width : subW;
-			SubHeight = (subH < 0) ? height : subH;
-			Pixels = pixels;
-			N = n;
-		}
-
-		public readonly Span<float> Slice(int x, int y) => Pixels.AsSpan(GetIndex(x, y), N);
-		public readonly int GetIndex(int x, int y, int channel = 0) => N * (OriginalWidth * (SubY + y) + SubX + x) + channel;
-		public ref float this[int x, int y, int channel = 0] => ref Pixels[GetIndex(x, y, channel)];
-
-		public static implicit operator BitmapRef(Bitmap bitmapRef) => new BitmapRef(bitmapRef);
+		_pixels = pixels;
+		_fullWidth = fullWidth;
+		_subX = subX;
+		_subY = subY;
+		Width = subWidth;
+		Height = subHeight;
 	}
 
-	/// <summary>
-	/// Constant reference to a 2D image bitmap or a buffer acting as one. Pixel storage not owned or managed by the object.
-	/// </summary>
-	public readonly struct BitmapConstRef
+	// Index into pixel buffer (read/write)
+	public ref float Get(int x, int y, int channel = 0)
 	{
-		internal readonly float[] _Pixels;
-		public readonly int OriginalWidth, OriginalHeight;
-		public readonly int SubX, SubY, SubWidth, SubHeight;
-		public readonly int N;
+		if (x < 0 || x >= Width || y < 0 || y >= Height)
+			throw new ArgumentOutOfRangeException();
 
-		public BitmapConstRef(BitmapRef bitmapRef)
-			: this(bitmapRef.Pixels, bitmapRef.OriginalWidth, bitmapRef.OriginalHeight, bitmapRef.N, bitmapRef.SubX, bitmapRef.SubY, bitmapRef.SubWidth, bitmapRef.SubHeight) { }
-
-		public BitmapConstRef(Bitmap bitmap, int subX = 0, int subY = 0, int subW = -1, int subH = -1)
-			: this(bitmap.Pixels, bitmap.Width, bitmap.Height, bitmap.N, subX, subY, subW, subH) { }
-
-		public BitmapConstRef(float[] pixels, int width, int height, int n = 1, int subX = 0, int subY = 0, int subW = -1, int subH = -1)
-		{
-			OriginalWidth = width;
-			OriginalHeight = height;
-			SubX = subX;
-			SubY = subY;
-			SubWidth = (subW < 0) ? width : subW;
-			SubHeight = (subH < 0) ? height : subH;
-			_Pixels = pixels;
-			N = n;
-		}
-
-		public readonly ReadOnlySpan<float> Slice(int x, int y) => _Pixels.AsSpan(GetIndex(x, y), N);
-		public readonly int GetIndex(int x, int y, int channel = 0) => N * (OriginalWidth * (SubY + y) + SubX + x) + channel;
-		public float this[int x, int y, int channel = 0] => _Pixels[GetIndex(x, y, channel)];
-
-		public static implicit operator BitmapConstRef(BitmapRef bitmapRef) => new BitmapConstRef(bitmapRef);
-		public static implicit operator BitmapConstRef(Bitmap bitmap) => new BitmapConstRef(bitmap);
+		int index = Channels * ((_subY + y) * _fullWidth + (_subX + x)) + channel;
+		return ref _pixels[index];
 	}
+
+	internal Span<float> GetPixelSpan() => _pixels;
+
+	public readonly int GetIndex(int x, int y, int channel = 0)
+	{
+		return channel + Channels * (x + Width * y);
+	}
+
+	// Optional indexer syntax
+	public ref float this[int x, int y, int channel = 0] => ref Get(x, y, channel);
 }

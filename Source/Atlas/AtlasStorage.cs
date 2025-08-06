@@ -21,9 +21,9 @@ namespace SharpMSDF.Atlas
         public abstract void Init<TStorage>(TStorage orig, int width, int height, Span<Remap> remapping)
             where TStorage : AtlasStorage;
         /// Stores a subsection at x, y into the atlas _Storage. May be implemented for only some TRect, N
-        public abstract void Put(int x, int y, BitmapConstRef subBitmap);
+        public abstract void Put(int x, int y, BitmapView subBitmap);
         /// Retrieves a subsection at x, y from the atlas _Storage. May be implemented for only some TRect, N
-        public abstract void Get(int x, int y, BitmapRef subBitmap);
+        public abstract void Get(int x, int y, BitmapView subBitmap);
 
     };
 
