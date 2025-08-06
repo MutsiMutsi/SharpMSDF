@@ -1,7 +1,3 @@
-using SharpMSDF.Core;
-using System;
-using System.Collections.Generic;
-using Typography.OpenFont.MathGlyphs;
 
 namespace SharpMSDF.Core
 {

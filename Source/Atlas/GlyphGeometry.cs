@@ -1,8 +1,6 @@
 ﻿using SharpMSDF.Core;
 using SharpMSDF.IO;
-#if MSDFGEN_USE_SKIA
 using SharpMSDF.SkiaSharp;
-#endif
 using Typography.OpenFont;
 
 namespace SharpMSDF.Atlas
@@ -27,7 +25,7 @@ namespace SharpMSDF.Atlas
 
 		private struct BoxData
 		{
-            public AtlasRectangle Rect;
+			public AtlasRectangle Rect;
 			public DoubleRange Range;
 			public double Scale;
 			public Vector2 Translate;
@@ -52,33 +50,11 @@ namespace SharpMSDF.Atlas
 				_codepoint = codepoint;
 				_advance *= geometryScale;
 
-#if MSDFGEN_USE_SKIA
-		if (preprocessGeometry)
-		{
-			ResolveShapeGeometry.Resolve(_shape);
-		}
-#endif
+				ResolveShapeGeometry.Resolve(_shape);
 
-				_shape.Normalize();
+				//TODO: it seems we already normalize in skia, do we need to do it again!??
+				//_shape.Normalize();
 				_bounds = _shape.GetBounds();
-
-#if MSDFGEN_USE_SKIA
-		if (!preprocessGeometry)
-#endif
-				{
-					var outerPoint = new Vector2(
-						_bounds.l - (_bounds.r - _bounds.l) - 1,
-						_bounds.b - (_bounds.t - _bounds.b) - 1
-					);
-
-					/*if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
-					{
-						foreach (var contour in _shape.Contours)
-							contour.Reverse();
-					}
-
-					_shape.OrientContours();*/
-				}
 
 				return true;
 			}
@@ -242,7 +218,7 @@ namespace SharpMSDF.Atlas
 			return this;
 		}
 
-        public GlyphGeometry SetBoxRect(AtlasRectangle rect)
+		public GlyphGeometry SetBoxRect(AtlasRectangle rect)
 		{
 			_box.Rect = rect;
 			return this;
@@ -266,7 +242,7 @@ namespace SharpMSDF.Atlas
 		//public ref _shape GetShape() => _shape;
 		//public ref _shape.Bounds GetShapeBounds() => ref _bounds;
 		public double GetAdvance() => _advance;
-        public AtlasRectangle GetBoxRect() => _box.Rect;
+		public AtlasRectangle GetBoxRect() => _box.Rect;
 		public void GetBoxRect(out int x, out int y, out int w, out int h)
 		{
 			x = _box.Rect.X;
