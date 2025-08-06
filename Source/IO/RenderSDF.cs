@@ -5,7 +5,7 @@ using FloatRGB = (float R, float G, float B);
 
 namespace SharpMSDF.IO
 {
-    public static class Render
+    /*public static class Render
     {
         private static FloatRGB Mix(FloatRGB distA, FloatRGB distB, double weight)
         {
@@ -131,5 +131,5 @@ namespace SharpMSDF.IO
                 }
         }
 
-    }
+    }*/
 }

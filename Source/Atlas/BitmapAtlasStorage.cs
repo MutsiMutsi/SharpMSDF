@@ -2,7 +2,7 @@
 
 namespace SharpMSDF.Atlas
 {
-    public class BitmapAtlasStorage<T> : AtlasStorage where T : struct
+    /*public class BitmapAtlasStorage<T> : AtlasStorage where T : struct
     {
         public Bitmap<T> Bitmap;
 
@@ -73,5 +73,5 @@ namespace SharpMSDF.Atlas
         {
             throw new NotImplementedException();
         }
-    }
+    }*/
 }

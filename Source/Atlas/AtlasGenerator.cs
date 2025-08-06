@@ -44,7 +44,7 @@ namespace SharpMSDF.Atlas
 	/// A delegate that generates the bitmap for a single glyph.
 	/// </summary>
 	public delegate void GeneratorFunction<T>(
-		BitmapRef<T> bitmap,
+		BitmapRef bitmap,
 		GlyphGeometry glyph,
 		GeneratorAttributes attributes
 	) where T : struct;

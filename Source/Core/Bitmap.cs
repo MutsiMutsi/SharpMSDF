@@ -19,9 +19,9 @@ namespace SharpMSDF.Core
     //    }
     //}
 
-    public class Bitmap<T> where T : struct
+    public class Bitmap
     {
-        public T[] Pixels;
+        public float[] Pixels;
         public int N;
 
         internal Bitmap() { }
@@ -30,10 +30,10 @@ namespace SharpMSDF.Core
             _Width = width;
             _Height = height;
             N = channels;
-            Pixels = new T[channels * width * height];
+            Pixels = new float[channels * width * height];
         }
 
-        public ref T this[int x, int y] => ref Pixels[N * (Width * y + x)];
+        public ref float this[int x, int y] => ref Pixels[N * (Width * y + x)];
 
         internal int _Width;
         public int Width => _Width;
@@ -41,7 +41,7 @@ namespace SharpMSDF.Core
         internal int _Height;
         public int Height => _Height; 
 
-        public static void Interpolate(Span<float> output, BitmapConstRef<float> bitmap, Vector2 pos)
+        public static void Interpolate(Span<float> output, BitmapConstRef bitmap, Vector2 pos)
         {
             pos -= new Vector2(.5);
             int l = (int)Math.Floor(pos.X);

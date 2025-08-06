@@ -9,30 +9,29 @@ namespace SharpMSDF.Atlas
 		where TStorage : AtlasStorage, new()
 	{
 		public readonly int N;
-		public GeneratorFunction<T> GEN_FN { get; }
+		public GeneratorFunction<float> GEN_FN { get; }
 		public TStorage Storage { get; private set; } = new();
 		public List<GlyphBox> Layout { get; } = [];
 
-		private List<T> _GlyphBuffer = [];
-		private List<byte> _ErrorCorrectionBuffer = [];
+		private List<float> _GlyphBuffer = [];
 		private GeneratorAttributes _Attributes = new GeneratorAttributes { Config = MSDFGeneratorConfig.Default };
 		private int _ThreadCount = 1;
 
-		public ImmediateAtlasGenerator(int n, GeneratorFunction<T> genFn)
+		public ImmediateAtlasGenerator(int n, GeneratorFunction<float> genFn)
 		{
 			N = n;
 			GEN_FN = genFn;
 			Storage.Init(0, 0, n); // just to store 'n'
 		}
 
-		public ImmediateAtlasGenerator(int width, int height, int n, GeneratorFunction<T> genFn)
+		public ImmediateAtlasGenerator(int width, int height, int n, GeneratorFunction<float> genFn)
 		{
 			N = n;
 			GEN_FN = genFn;
 			Storage.Init(width, height, n);
 		}
 
-		public ImmediateAtlasGenerator(int n, GeneratorFunction<T> genFn, TStorage storage)
+		public ImmediateAtlasGenerator(int n, GeneratorFunction<float> genFn, TStorage storage)
 		{
 			N = n;
 			GEN_FN = genFn;
@@ -58,31 +57,17 @@ namespace SharpMSDF.Atlas
 			if (requiredGlyphBufferSize > _GlyphBuffer.Count)
 			{
 				_GlyphBuffer.Clear();
-				_GlyphBuffer.AddRange(new T[requiredGlyphBufferSize]);
-			}
-
-			int requiredErrorBufferSize = _ThreadCount * maxBoxArea;
-			if (requiredErrorBufferSize > _ErrorCorrectionBuffer.Count)
-			{
-				_ErrorCorrectionBuffer.Clear();
-				_ErrorCorrectionBuffer.AddRange(new byte[requiredErrorBufferSize]);
+				_GlyphBuffer.AddRange(new float[requiredGlyphBufferSize]);
 			}
 
 			GeneratorAttributes[] threadAttributes = new GeneratorAttributes[_ThreadCount];
 
 			// Get spans for the buffers to avoid repeated List access
-			Span<T> glyphBufferSpan = CollectionsMarshal.AsSpan(_GlyphBuffer);
-			Span<byte> errorBufferSpan = CollectionsMarshal.AsSpan(_ErrorCorrectionBuffer);
+			Span<float> glyphBufferSpan = CollectionsMarshal.AsSpan(_GlyphBuffer);
 
 			for (int i = 0; i < _ThreadCount; ++i)
 			{
 				threadAttributes[i] = _Attributes;
-
-				// Create a span for this thread's error correction buffer
-				Span<byte> threadErrorSpan = errorBufferSpan.Slice(i * maxBoxArea, maxBoxArea);
-
-				// Convert span to array only when necessary for the API
-				threadAttributes[i].Config.ErrorCorrection.Buffer = threadErrorSpan.ToArray();
 			}
 
 			Workload workload = new((i, threadNo) =>
@@ -91,10 +76,10 @@ namespace SharpMSDF.Atlas
 				if (!glyph.IsWhitespace())
 				{
 					glyph.GetBoxRect(out int l, out int b, out int w, out int h);
-					T[] span = _GlyphBuffer.GetRange(threadNo * threadBufferSize, threadBufferSize).ToArray();
-					BitmapRef<T> glyphBitmap = new(span, w, h, N);
+					float[] span = _GlyphBuffer.GetRange(threadNo * threadBufferSize, threadBufferSize).ToArray();
+					BitmapRef glyphBitmap = new(span, w, h, N);
 					GEN_FN(glyphBitmap, glyph, threadAttributes[threadNo]);
-					BitmapConstRef<T> constRef = new(glyphBitmap);
+					BitmapConstRef constRef = new(glyphBitmap);
 					Storage.Put(l, b, constRef);
 				}
 				return true;

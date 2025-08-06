@@ -4,7 +4,6 @@ using SharpMSDF.IO;
 using SharpMSDF.SkiaSharp;
 #endif
 using Typography.OpenFont;
-using SimpleTrueShapeDistanceFinder = SharpMSDF.Core.ShapeDistanceFinder<SharpMSDF.Core.SimpleContourCombiner<SharpMSDF.Core.TrueDistanceSelector, double>, SharpMSDF.Core.TrueDistanceSelector, double>;
 
 namespace SharpMSDF.Atlas
 {
@@ -72,13 +71,13 @@ namespace SharpMSDF.Atlas
 						_bounds.b - (_bounds.t - _bounds.b) - 1
 					);
 
-					if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
+					/*if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
 					{
 						foreach (var contour in _shape.Contours)
 							contour.Reverse();
 					}
 
-					_shape.OrientContours();
+					_shape.OrientContours();*/
 				}
 
 				return true;
