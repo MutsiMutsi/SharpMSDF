@@ -1,184 +1,73 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.Core
 {
-    public class ShapePerpendicularDistanceFinder
-    {
-        public delegate double DistanceType(); // Will be overridden by TContourCombiner.DistanceType
-
-        private readonly Shape Shape;
-        private readonly OverlappingContourCombinerPerpendicularDistance ContourCombiner;
-        private readonly EdgeCache[] ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
-
-        public ShapePerpendicularDistanceFinder(Shape shape)
-        {
-            this.Shape = shape;
-            ContourCombiner = new OverlappingContourCombinerPerpendicularDistance();
-            ContourCombiner.NonCtorInit(shape);
-            ShapeEdgeCache = new EdgeCache[shape.EdgeCount()];
-        }
-
-        public unsafe double Distance(Vector2 origin)
-        {
-            ContourCombiner.Reset(origin);
-
-            fixed (EdgeCache* edgeCacheStart = ShapeEdgeCache)
-            {
-                EdgeCache* edgeCache = edgeCacheStart;
-                //int edgeCacheIndex = 0;
-
-                for (int c = 0; c < Shape.Contours.Count; c++)
-                {
-                    var contour = Shape.Contours[c];
-                    if (contour.Edges.Count > 0)
-                    {
-                        var edgeSelector = ContourCombiner.EdgeSelector(c);
-
-                        EdgeSegment prevEdge = contour.Edges.Count >= 2
-                            ? contour.Edges[contour.Edges.Count - 2]
-                            : contour.Edges[0];
-
-                        EdgeSegment curEdge = contour.Edges[^1];
-
-                        for (int i = 0; i < contour.Edges.Count; i++)
-                        {
-                            EdgeSegment nextEdge = contour.Edges[i];
-                            edgeSelector.AddEdge(edgeCache++, prevEdge, curEdge, nextEdge);
-                            //ShapeEdgeCache[edgeCacheIndex++] = temp;
-                            prevEdge = curEdge;
-                            curEdge = nextEdge;
-                        }
-                    }
-                }
-
-            }
-            return ContourCombiner.Distance();
-        }
-
-        public unsafe static double OneShotDistance(Shape shape, Vector2 origin)
-        {
-            var combiner = new OverlappingContourCombinerPerpendicularDistance();
-            combiner.NonCtorInit(shape);
-            combiner.Reset(origin);
-
-            for (int i = 0; i < shape.Contours.Count; ++i)
-            {
-                var contour = shape.Contours[i];
-                if (contour.Edges.Count == 0)
-                    continue;
-
-                var edgeSelector = combiner.EdgeSelector(i);
-
-                EdgeSegment prevEdge = contour.Edges.Count >= 2
-                    ? contour.Edges[contour.Edges.Count - 2]
-                    : contour.Edges[0];
-
-                EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
-
-                foreach (var edgeSegment in contour.Edges)
-                {
-                    EdgeSegment nextEdge = edgeSegment;
-                    var dummyCache = new EdgeCache(); // or default!
-                    edgeSelector.AddEdge(&dummyCache, prevEdge, curEdge, nextEdge);
-
-                    prevEdge = curEdge;
-                    curEdge = nextEdge;
-                }
-            }
-
-            return combiner.Distance();
-        }
-    }
-
-	public class ShapeMultiDistanceFinder
+	public unsafe struct ShapeMultiDistanceFinder
 	{
-		public delegate double DistanceType(); // Will be overridden by TContourCombiner.DistanceType
+		private readonly Shape _shape;
+		private OverlappingContourCombinerMultiDistance _contourCombiner;
+		private readonly EdgeCache* _shapeEdgeCache;
+		private readonly void* _memory; // For cleanup tracking
 
-		private readonly Shape Shape;
-		private readonly OverlappingContourCombinerMultiDistance ContourCombiner;
-		private readonly EdgeCache[] ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
-
-		public ShapeMultiDistanceFinder(Shape shape)
+		public ShapeMultiDistanceFinder(Shape shape, Span<byte> workingMemory)
 		{
-			this.Shape = shape;
-			ContourCombiner = new OverlappingContourCombinerMultiDistance();
-			ContourCombiner.NonCtorInit(shape);
-			ShapeEdgeCache = new EdgeCache[shape.EdgeCount()];
+			_shape = shape;
+
+			int edgeCacheSize = shape.EdgeCount() * sizeof(EdgeCache);
+			int combinerMemorySize = OverlappingContourCombinerMultiDistance.GetRequiredMemorySize(shape.Contours.Count);
+			int totalRequiredSize = edgeCacheSize + combinerMemorySize;
+
+			if (workingMemory.Length < totalRequiredSize)
+				throw new ArgumentException($"Working memory too small. Required: {totalRequiredSize}, provided: {workingMemory.Length}");
+
+			fixed (byte* memPtr = workingMemory)
+			{
+				_memory = memPtr;
+				_shapeEdgeCache = (EdgeCache*)memPtr;
+
+				var combinerMemory = workingMemory.Slice(edgeCacheSize, combinerMemorySize);
+				_contourCombiner = new OverlappingContourCombinerMultiDistance(shape, combinerMemory);
+			}
 		}
 
-		public unsafe MultiDistance Distance(Vector2 origin)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public MultiDistance Distance(Vector2 origin)
 		{
-			ContourCombiner.Reset(origin);
+			_contourCombiner.Reset(origin);
 
-			fixed (EdgeCache* edgeCacheStart = ShapeEdgeCache)
+			EdgeCache* edgeCache = _shapeEdgeCache;
+
+			for (int c = 0; c < _shape.Contours.Count; c++)
 			{
-				EdgeCache* edgeCache = edgeCacheStart;
-				//int edgeCacheIndex = 0;
-
-				for (int c = 0; c < Shape.Contours.Count; c++)
+				var contour = _shape.Contours[c];
+				if (contour.Edges.Count > 0)
 				{
-					var contour = Shape.Contours[c];
-					if (contour.Edges.Count > 0)
+					var edgeSelector = _contourCombiner.EdgeSelector(c);
+
+					EdgeSegment prevEdge = contour.Edges.Count >= 2
+						? contour.Edges[contour.Edges.Count - 2]
+						: contour.Edges[0];
+
+					EdgeSegment curEdge = contour.Edges[^1];
+
+					for (int i = 0; i < contour.Edges.Count; i++)
 					{
-						var edgeSelector = ContourCombiner.EdgeSelector(c);
-
-						EdgeSegment prevEdge = contour.Edges.Count >= 2
-							? contour.Edges[contour.Edges.Count - 2]
-							: contour.Edges[0];
-
-						EdgeSegment curEdge = contour.Edges[^1];
-
-						for (int i = 0; i < contour.Edges.Count; i++)
-						{
-							EdgeSegment nextEdge = contour.Edges[i];
-							edgeSelector.AddEdge(edgeCache++, prevEdge, curEdge, nextEdge);
-							//ShapeEdgeCache[edgeCacheIndex++] = temp;
-							prevEdge = curEdge;
-							curEdge = nextEdge;
-						}
+						EdgeSegment nextEdge = contour.Edges[i];
+						edgeSelector->AddEdge(edgeCache++, prevEdge, curEdge, nextEdge);
+						prevEdge = curEdge;
+						curEdge = nextEdge;
 					}
 				}
-
 			}
-			return ContourCombiner.Distance();
+
+			return _contourCombiner.Distance();
 		}
 
-		public unsafe static MultiDistance OneShotDistance(Shape shape, Vector2 origin)
+		public static int GetRequiredMemorySize(Shape shape)
 		{
-			var combiner = new OverlappingContourCombinerMultiDistance();
-			combiner.NonCtorInit(shape);
-			combiner.Reset(origin);
-
-			for (int i = 0; i < shape.Contours.Count; ++i)
-			{
-				var contour = shape.Contours[i];
-				if (contour.Edges.Count == 0)
-					continue;
-
-				var edgeSelector = combiner.EdgeSelector(i);
-
-				EdgeSegment prevEdge = contour.Edges.Count >= 2
-					? contour.Edges[contour.Edges.Count - 2]
-					: contour.Edges[0];
-
-				EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
-
-				foreach (var edgeSegment in contour.Edges)
-				{
-					EdgeSegment nextEdge = edgeSegment;
-					var dummyCache = new EdgeCache(); // or default!
-					edgeSelector.AddEdge(&dummyCache, prevEdge, curEdge, nextEdge);
-
-					prevEdge = curEdge;
-					curEdge = nextEdge;
-				}
-			}
-
-			return combiner.Distance();
+			int edgeCacheSize = shape.EdgeCount() * sizeof(EdgeCache);
+			int combinerMemorySize = OverlappingContourCombinerMultiDistance.GetRequiredMemorySize(shape.Contours.Count);
+			return edgeCacheSize + combinerMemorySize;
 		}
 	}
 }

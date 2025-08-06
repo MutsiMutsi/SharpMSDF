@@ -11,7 +11,6 @@ namespace SharpMSDF.Core
         // Threshold of the dot product of adjacent edge directions to be considered convergent.
         public const double MSDFGEN_CORNER_DOT_EPSILON = .000001;
 
-
         public struct Bounds
         {
             public double l, b, r, t;
