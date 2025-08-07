@@ -28,6 +28,57 @@ namespace SharpMSDF.Core
 		{
 			return a.X * b.Y - a.Y * b.X;
 		}
+
+		public static void NormalizeBatch(ReadOnlySpan<Vector2> input, Span<Vector2> output)
+		{
+			int count = input.Length;
+			int simdWidth = Vector<float>.Count;
+
+			// Process SIMD-width batches (2x Vector2 == simdWidth floats)
+			int i = 0;
+			for (; i + simdWidth / 2 <= count; i += simdWidth / 2)
+			{
+				// Load interleaved Vector2s into SoA for SIMD
+				Span<float> x = stackalloc float[simdWidth];
+				Span<float> y = stackalloc float[simdWidth];
+				for (int j = 0; j < simdWidth / 2; j++)
+				{
+					x[j] = input[i + j].X;
+					y[j] = input[i + j].Y;
+				}
+
+				var xVec = new Vector<float>(x);
+				var yVec = new Vector<float>(y);
+
+				var lenSq = xVec * xVec + yVec * yVec;
+				var epsilon = new Vector<float>(1e-6f);
+				var mask = Vector.GreaterThan(lenSq, epsilon);
+				var invLen = new Vector<float>(1.0f) / Vector.SquareRoot(lenSq);
+
+				var nx = xVec * invLen;
+				var ny = yVec * invLen;
+
+				nx = Vector.ConditionalSelect(mask, nx, Vector<float>.Zero);
+				ny = Vector.ConditionalSelect(mask, ny, Vector<float>.Zero);
+
+				// Store result back into Vector2 output
+				nx.CopyTo(x);
+				ny.CopyTo(y);
+				for (int j = 0; j < simdWidth / 2; j++)
+					output[i + j] = new Vector2(x[j], y[j]);
+			}
+
+			// Fallback for any remaining Vector2s
+			for (; i < count; i++)
+			{
+				var v = input[i];
+				float lenSq = v.LengthSquared();
+				if (lenSq > 1e-6f)
+					output[i] = v / MathF.Sqrt(lenSq);
+				else
+					output[i] = Vector2.Zero;
+			}
+		}
 	}
 	/**
      * A 2-dimensional euclidean vector with double precision.

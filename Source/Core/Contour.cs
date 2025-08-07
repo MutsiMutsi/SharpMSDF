@@ -1,6 +1,3 @@
-using SharpMSDF.Core;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
 
 namespace SharpMSDF.Core
@@ -9,7 +6,7 @@ namespace SharpMSDF.Core
 	public class Contour
 	{
 
-		public List<EdgeSegment> Edges = new List<EdgeSegment>();
+		public List<EdgeSegment> Edges = [];
 
 		private static float Shoelace(Vector2 a, Vector2 b)
 		{
@@ -29,22 +26,41 @@ namespace SharpMSDF.Core
 
 		private static void BoundPoint(ref float l, ref float b, ref float r, ref float t, Vector2 p)
 		{
-			if (p.X < l) l = p.X;
-			if (p.Y < b) b = p.Y;
-			if (p.X > r) r = p.X;
-			if (p.Y > t) t = p.Y;
+			if (p.X < l)
+			{
+				l = p.X;
+			}
+
+			if (p.Y < b)
+			{
+				b = p.Y;
+			}
+
+			if (p.X > r)
+			{
+				r = p.X;
+			}
+
+			if (p.Y > t)
+			{
+				t = p.Y;
+			}
 		}
 
 		public void Bound(ref float l, ref float b, ref float r, ref float t)
 		{
 			for (int e = 0; e < Edges.Count; e++)
+			{
 				Edges[e].Bound(ref l, ref b, ref r, ref t);
+			}
 		}
 
 		public void BoundMiters(ref float l, ref float b, ref float r, ref float t, float border, float miterLimit, int polarity)
 		{
 			if (Edges.Count == 0)
+			{
 				return;
+			}
 
 			Vector2 prevDir = Vector2.Normalize(Edges[^1].Direction(1));
 
@@ -56,8 +72,11 @@ namespace SharpMSDF.Core
 					float miterLength = miterLimit;
 					float q = 0.5f * (1f - Vector2.Dot(prevDir, dir));
 					if (q > 0)
+					{
 						miterLength = MathF.Min(1 / MathF.Sqrt(q), miterLimit);
-					Vector2 miter = Edges[e].Point(0) + border * miterLength * Vector2.Normalize((prevDir + dir));
+					}
+
+					Vector2 miter = Edges[e].Point(0) + (border * miterLength * Vector2.Normalize(prevDir + dir));
 					BoundPoint(ref l, ref b, ref r, ref t, miter);
 				}
 				prevDir = Vector2.Normalize(Edges[e].Direction(1));
@@ -67,7 +86,9 @@ namespace SharpMSDF.Core
 		public int Winding()
 		{
 			if (Edges.Count == 0)
+			{
 				return 0;
+			}
 
 			float total = 0;
 

@@ -1,6 +1,8 @@
 ﻿using SharpMSDF.Core;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace SharpMSDF.Atlas
@@ -14,7 +16,6 @@ namespace SharpMSDF.Atlas
 		public TStorage Storage { get; private set; }
 		public List<GlyphBox> Layout { get; } = [];
 		private GeneratorAttributes _Attributes = new GeneratorAttributes { Config = MSDFGeneratorConfig.Default };
-		private int _ThreadCount = 1;
 
 		public ImmediateAtlasGenerator(int n, GeneratorFunction<float> genFn, TStorage storage)
 		{
@@ -23,80 +24,48 @@ namespace SharpMSDF.Atlas
 			Storage = storage;
 		}
 
+
 		public override void Generate(Span<GlyphGeometry> glyphs)
 		{
 			int maxBoxArea = 0;
-
 			for (int i = 0; i < glyphs.Length; ++i)
 			{
 				GlyphBox box = glyphs[i];
-				maxBoxArea = Math.Max(maxBoxArea, box.Rect.Width * box.Rect.Height);
+				int boxArea = box.Rect.Width * box.Rect.Height;
+				maxBoxArea = Math.Max(maxBoxArea, boxArea);
 				Layout.Add(box);
 			}
 
-			int threadBufferSize = N * maxBoxArea;
-			GeneratorAttributes[] threadAttributes = new GeneratorAttributes[_ThreadCount];
-
-			for (int i = 0; i < _ThreadCount; ++i)
-			{
-				threadAttributes[i] = _Attributes;
-			}
-
+			// Pre-allocate buffer large enough for the biggest glyph
+			int bufferSize = maxBoxArea * BitmapView.Channels;
 			var arrayPool = ArrayPool<float>.Shared;
+			var buffer = arrayPool.Rent(bufferSize);
 
-			// Use ConcurrentBag to track rented arrays for proper cleanup
-			var rentedArrays = new ConcurrentBag<float[]>();
-			var threadBuffers = new ThreadLocal<float[]>(() =>
+			try
 			{
-				var buffer = arrayPool.Rent(threadBufferSize);
-				rentedArrays.Add(buffer);
-				return buffer;
-			});
-
-			/*try
-			{
-				Parallel.For(0, glyphs.Length, new ParallelOptions { MaxDegreeOfParallelism = _ThreadCount },
-					i =>
-			{*/
-			for (int i = 0; i < glyphs.Length; i++)
-			{
-				GlyphGeometry glyph = glyphs[i];
-				if (!glyph.IsWhitespace())
+				for (int i = 0; i < glyphs.Length; i++)
 				{
-					glyph.GetBoxRect(out int l, out int b, out int w, out int h);
-					var buffer = threadBuffers.Value!;
-					int requiredSize = w * h * BitmapView.Channels;
+					ref readonly var glyph = ref glyphs[i];
 
-					if (buffer.Length < requiredSize)
+					if (!glyph.IsWhitespace())
 					{
-						// Return old buffer and rent a new larger one
-						arrayPool.Return(buffer);
-						buffer = arrayPool.Rent(requiredSize);
-						rentedArrays.Add(buffer);
-						threadBuffers.Value = buffer;
+						glyph.GetBoxRect(out int l, out int b, out int w, out int h);
+						int requiredSize = w * h * BitmapView.Channels;
+
+						// Buffer should always be large enough now
+						Debug.Assert(buffer.Length >= requiredSize, "Pre-allocated buffer too small");
+
+						Span<float> pixelSpan = buffer.AsSpan(0, requiredSize);
+						var glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
+						GEN_FN(glyphBitmapView, glyph, _Attributes);
+						Storage.Put(l, b, glyphBitmapView);
 					}
-
-					Span<float> pixelSpan = buffer.AsSpan(0, requiredSize);
-					BitmapView glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
-
-					int threadNo = Thread.CurrentThread.ManagedThreadId % _ThreadCount;
-
-					GEN_FN(glyphBitmapView, glyph, threadAttributes[threadNo]);
-					Storage.Put(l, b, glyphBitmapView);
 				}
 			}
-			//);
-			/*}
 			finally
 			{
-				// Return all rented arrays
-				foreach (var buffer in rentedArrays)
-				{
-					arrayPool.Return(buffer);
-				}
-
-				threadBuffers.Dispose();
-			}*/
+				arrayPool.Return(buffer);
+			}
 		}
 
 		public override void Rearrange(int width, int height, List<Remap> remapping, int count)
@@ -123,9 +92,5 @@ namespace SharpMSDF.Atlas
 			_Attributes = attributes;
 		}
 
-		public void SetThreadCount(int threadCount)
-		{
-			_ThreadCount = threadCount;
-		}
 	}
 }

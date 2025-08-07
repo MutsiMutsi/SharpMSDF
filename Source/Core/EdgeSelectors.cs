@@ -296,16 +296,42 @@ namespace SharpMSDF.Core
 			Vector2 ap = _p - edge.Point(0);
 			Vector2 bp = _p - edge.Point(1);
 
-			Vector2 aDir = edge.Direction(0); ////Normalisation removed...
-			Vector2 bDir = edge.Direction(1); //Normalisation removed...
-			Vector2 prevDir = prev.Direction(1); //Normalisation removed...
-			Vector2 nextDir = next.Direction(0); //Normalisation removed...
+			//TODO: find out when its needed to normalize...
+			/*
+			 Vector2 aDir = Vector2.Normalize(edge.Direction(0));
+			Vector2 bDir = Vector2.Normalize(edge.Direction(1));
+			Vector2 prevDir = Vector2.Normalize(prev.Direction(1));
+			Vector2 nextDir = Vector2.Normalize(next.Direction(0));
 
 			Vector2 aSum = prevDir + aDir;
 			Vector2 bSum = bDir + nextDir;
 
-			float add = Vector2.Dot(ap, aSum); //Normalisation removed...
-			float bdd = -Vector2.Dot(bp, bSum); //Normalisation removed...
+			float add = Vector2.Dot(ap, Vector2.Normalize(prevDir + aDir));
+			float bdd = -Vector2.Dot(bp, Vector2.Normalize(bDir + nextDir));
+			*/
+
+
+			/*ReadOnlySpan<Vector2> batch = stackalloc Vector2[4]
+			{
+				edge.Direction(0),
+				edge.Direction(1),
+				prev.Direction(1),
+				next.Direction(0)
+			};
+			Span<Vector2> result = stackalloc Vector2[4];
+			VectorExtensions.NormalizeBatch(batch, result);*/
+
+			Vector2 aDir = Vector2.Normalize(edge.Direction(0));
+			Vector2 bDir = Vector2.Normalize(edge.Direction(1));
+			Vector2 prevDir = Vector2.Normalize(prev.Direction(1));
+			Vector2 nextDir = Vector2.Normalize(next.Direction(0));
+
+			Vector2 aSum = prevDir + aDir;
+			Vector2 bSum = bDir + nextDir;
+
+			float add = Vector2.Dot(ap, Vector2.Normalize(prevDir + aDir));
+			float bdd = -Vector2.Dot(bp, Vector2.Normalize(bDir + nextDir));
+
 
 			cache->ADomainDistance = add;
 			cache->BDomainDistance = bdd;

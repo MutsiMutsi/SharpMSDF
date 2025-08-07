@@ -1,6 +1,5 @@
-using System.Drawing;
-using System.IO;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.Core
 {
@@ -236,24 +235,51 @@ namespace SharpMSDF.Core
 		public Vector2 Point(float t) => Vector2.Lerp(P0, P1, t);
 		public Vector2 Direction(float _) => P1 - P0;
 
+		// Ultra-optimized version with minimal sqrt calls:
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public SignedDistance SignedDistance(Vector2 origin, out float param)
 		{
 			Vector2 aq = origin - P0;
 			Vector2 ab = P1 - P0;
-			param = Vector2.Dot(aq, ab) / Vector2.Dot(ab, ab);
-			Vector2 eq = (param > 0.5) ? P1 - origin : P0 - origin;
-			float endpointDist = eq.Length();
+
+			float abSq = ab.X * ab.X + ab.Y * ab.Y;
+			param = (aq.X * ab.X + aq.Y * ab.Y) / abSq;
+
+			float cross = aq.X * ab.Y - aq.Y * ab.X;
+
+			float endpointDist;
+			float sign;
+			float eqSq;
+			Vector2 eq;
+			float pseudoDist;
 
 			if (param > 0 && param < 1)
 			{
-				float ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
-				if (Math.Abs(ortho) < endpointDist)
-					return new SignedDistance(ortho, 0);
+				float abLength = MathF.Sqrt(abSq);
+				float orthoDist = cross / abLength;
+
+				// Use squared distance comparison when possible
+				eq = (param > 0.5f) ? P1 - origin : P0 - origin;
+				eqSq = eq.X * eq.X + eq.Y * eq.Y;
+
+				if (orthoDist * orthoDist < eqSq)
+					return new SignedDistance(orthoDist, 0);
+
+				// Endpoint is closer
+				endpointDist = MathF.Sqrt(eqSq);
+				sign = cross >= 0 ? 1.0f : -1.0f;
+				pseudoDist = MathF.Abs(ab.X * eq.X + ab.Y * eq.Y) / (abLength * endpointDist);
+				return new SignedDistance(sign * endpointDist, pseudoDist);
 			}
 
-			float sign = Arithmetic.NonZeroSign(VectorExtensions.Cross(aq, ab));
-			return new SignedDistance(sign * endpointDist,
-				Math.Abs(Vector2.Dot(Vector2.Normalize(ab), Vector2.Normalize(eq))));
+			// Outside segment
+			eq = (param > 0.5f) ? P1 - origin : P0 - origin;
+			eqSq = eq.X * eq.X + eq.Y * eq.Y;
+			endpointDist = MathF.Sqrt(eqSq);
+			sign = cross >= 0 ? 1.0f : -1.0f;
+			pseudoDist = MathF.Abs(ab.X * eq.X + ab.Y * eq.Y) / (MathF.Sqrt(abSq) * endpointDist);
+
+			return new SignedDistance(sign * endpointDist, pseudoDist);
 		}
 
 		public void Bound(ref float l, ref float b, ref float r, ref float t)
