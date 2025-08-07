@@ -1,6 +1,6 @@
-﻿#if MSDFGEN_USE_SKIA
+﻿using SharpMSDF.Core;
 
-using SharpMSDF.Core;
+#if MSDFGEN_USE_SKIA
 using SkiaSharp;
 using System.Numerics;
 
@@ -41,9 +41,9 @@ namespace SharpMSDF.SkiaSharp
 							case EdgeSegmentType.Quadratic:
 								skPath.QuadTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]));
 								break;
-							case EdgeSegmentType.Cubic:
+							/*case EdgeSegmentType.Cubic:
 								skPath.CubicTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]), PointToSkiaPoint(p[3]));
-								break;
+								break;*/
 						}
 						edge = nextEdge;
 					}
@@ -51,7 +51,7 @@ namespace SharpMSDF.SkiaSharp
 			}
 		}
 
-		public static void ShapeFromSkiaPath(Shape shape, SKPath skPath)
+		public static void ShapeFromSkiaPath(ref Shape shape, SKPath skPath)
 		{
 			shape.Contours.Clear();
 			Contour contour = shape.AddContour();
@@ -92,7 +92,7 @@ namespace SharpMSDF.SkiaSharp
 
 							break;
 
-						case SKPathVerb.Cubic:
+						/*case SKPathVerb.Cubic:
 							contour.AddEdge(new EdgeSegment(
 								new CubicSegment(
 									PointFromSkiaPoint(edgePoints[0]),
@@ -103,7 +103,7 @@ namespace SharpMSDF.SkiaSharp
 							));
 
 							break;
-
+							*/
 						case SKPathVerb.Conic:
 							// Convert conic to quadratic curves
 							var quadPoints = new SKPoint[5];
@@ -183,7 +183,7 @@ namespace SharpMSDF.SkiaSharp
 			}
 		}
 
-		public static bool Resolve(Shape shape)
+		public static bool Resolve(ref Shape shape)
 		{
 			using (var skPath = new SKPath())
 			{
@@ -195,7 +195,7 @@ namespace SharpMSDF.SkiaSharp
 					if (simplifiedPath == null)
 						return false;
 					// Note: Skia's AsWinding doesn't seem to work for unknown reasons (from original comment)
-					ShapeFromSkiaPath(shape, simplifiedPath);
+					ShapeFromSkiaPath(ref shape, simplifiedPath);
 					// In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
 					// which are not valid geometry, so they must be removed.
 					PruneCrossedQuadrilaterals(shape);
@@ -217,5 +217,20 @@ namespace SharpMSDF.SkiaSharp
 		}
 	}
 }
+
+#else
+
+
+namespace SharpMSDF.SkiaSharp
+{
+	public static class ResolveShapeGeometry
+	{
+		public static bool Resolve(ref Shape shape)
+		{
+			return true;
+		}
+	}
+}
+
 
 #endif

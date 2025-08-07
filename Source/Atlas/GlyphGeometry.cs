@@ -55,7 +55,7 @@ namespace SharpMSDF.Atlas
 				_codepoint = codepoint;
 				_advance *= geometryScale;
 
-				ResolveShapeGeometry.Resolve(_shape);
+				ResolveShapeGeometry.Resolve(ref _shape);
 
 				//TODO: it seems we already normalize in skia, do we need to do it again!??
 				//_shape.Normalize();

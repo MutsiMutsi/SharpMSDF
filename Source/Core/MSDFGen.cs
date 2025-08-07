@@ -25,7 +25,7 @@ namespace SharpMSDF.Core
 		public static unsafe void GenerateDistanceField(BitmapView output, Shape shape, SDFTransformation transformation, Span<byte> workingMemory)
 		{
 			var converter = new DistancePixelConversionMulti { Mapping = transformation.DistanceMapping };
-			var distanceFinder = new ShapeMultiDistanceFinder(shape, workingMemory);
+			var distanceFinder = new ShapeMultiDistanceFinder(ref shape, workingMemory);
 
 			Span<float> pixels = output.GetPixelSpan();
 
@@ -41,7 +41,7 @@ namespace SharpMSDF.Core
 					{
 						int x = rightToLeft ? output.Width - col - 1 : col;
 						Vector2 p = transformation.Projection.Unproject(new Vector2(x + .5f, y + .5f));
-						MultiDistance dist = distanceFinder.Distance(p);
+						MultiDistance dist = distanceFinder.Distance(ref shape, p);
 						float* pixel = pixelsRaw + output.GetIndex(x, row);
 						converter.Convert(pixel, dist, x, row);
 					}

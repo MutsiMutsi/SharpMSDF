@@ -8,7 +8,7 @@ namespace SharpMSDF.Core
 		None = 0,
 		Linear,
 		Quadratic,
-		Cubic
+		//Cubic
 	}
 
 	public readonly struct EdgeSegment
@@ -18,7 +18,7 @@ namespace SharpMSDF.Core
 
 		private readonly LinearSegment linear;
 		private readonly QuadraticSegment quadratic;
-		private readonly CubicSegment cubic;
+		//private readonly CubicSegment cubic;
 
 		public EdgeSegment(LinearSegment segment, EdgeColor color = EdgeColor.White)
 		{
@@ -26,7 +26,7 @@ namespace SharpMSDF.Core
 			Color = color;
 			linear = segment;
 			quadratic = default;
-			cubic = default;
+			//cubic = default;
 		}
 
 		public EdgeSegment(QuadraticSegment segment, EdgeColor color = EdgeColor.White)
@@ -35,24 +35,24 @@ namespace SharpMSDF.Core
 			Color = color;
 			linear = default;
 			quadratic = segment;
-			cubic = default;
+			//cubic = default;
 		}
 
-		public EdgeSegment(CubicSegment segment, EdgeColor color = EdgeColor.White)
+		/*public EdgeSegment(CubicSegment segment, EdgeColor color = EdgeColor.White)
 		{
 			Type = EdgeSegmentType.Cubic;
 			Color = color;
 			linear = default;
 			quadratic = default;
 			cubic = segment;
-		}
+		}*/
 
 		public Vector2 Point(float t)
 			=> Type switch
 			{
 				EdgeSegmentType.Linear => linear.Point(t),
 				EdgeSegmentType.Quadratic => quadratic.Point(t),
-				EdgeSegmentType.Cubic => cubic.Point(t),
+				//EdgeSegmentType.Cubic => cubic.Point(t),
 				_ => default
 			};
 
@@ -61,7 +61,7 @@ namespace SharpMSDF.Core
 			{
 				EdgeSegmentType.Linear => linear.Direction(t),
 				EdgeSegmentType.Quadratic => quadratic.Direction(t),
-				EdgeSegmentType.Cubic => cubic.Direction(t),
+				//EdgeSegmentType.Cubic => cubic.Direction(t),
 				_ => default
 			};
 
@@ -70,7 +70,7 @@ namespace SharpMSDF.Core
 			{
 				EdgeSegmentType.Linear => linear.SignedDistance(origin, out param),
 				EdgeSegmentType.Quadratic => quadratic.SignedDistance(origin, out param),
-				EdgeSegmentType.Cubic => cubic.SignedDistance(origin, out param),
+				//EdgeSegmentType.Cubic => cubic.SignedDistance(origin, out param),
 				_ => throw new InvalidOperationException()
 			};
 
@@ -84,9 +84,9 @@ namespace SharpMSDF.Core
 				case EdgeSegmentType.Quadratic:
 					quadratic.Bound(ref l, ref b, ref r, ref t);
 					break;
-				case EdgeSegmentType.Cubic:
-					cubic.Bound(ref l, ref b, ref r, ref t);
-					break;
+				//case EdgeSegmentType.Cubic:
+					//cubic.Bound(ref l, ref b, ref r, ref t);
+					//break;
 			}
 		}
 
@@ -100,9 +100,9 @@ namespace SharpMSDF.Core
 				case EdgeSegmentType.Quadratic:
 					quadratic.SplitInThirds(out part0, out part1, out part2, Color);
 					break;
-				case EdgeSegmentType.Cubic:
-					cubic.SplitInThirds(out part0, out part1, out part2, Color);
-					break;
+				//case EdgeSegmentType.Cubic:
+					//cubic.SplitInThirds(out part0, out part1, out part2, Color);
+					//break;
 				default:
 					throw new InvalidOperationException();
 			}
@@ -114,7 +114,7 @@ namespace SharpMSDF.Core
 			{
 				EdgeSegmentType.Linear => new EdgeSegment(linear.Reverse(), Color),
 				EdgeSegmentType.Quadratic => new EdgeSegment(quadratic.Reverse(), Color),
-				EdgeSegmentType.Cubic => new EdgeSegment(cubic.Reverse(), Color),
+				//EdgeSegmentType.Cubic => new EdgeSegment(cubic.Reverse(), Color),
 				_ => this
 			};
 		}
@@ -127,8 +127,8 @@ namespace SharpMSDF.Core
 					return linear.DirectionChange(param);
 				case EdgeSegmentType.Quadratic:
 					return quadratic.DirectionChange(param);
-				case EdgeSegmentType.Cubic:
-					return cubic.DirectionChange(param);
+				//case EdgeSegmentType.Cubic:
+					//return cubic.DirectionChange(param);
 				default:
 					throw new InvalidOperationException();
 			}
@@ -143,8 +143,8 @@ namespace SharpMSDF.Core
 					return [linear.P0, linear.P1];
 				case EdgeSegmentType.Quadratic:
 					return [quadratic.P0, quadratic.P1, quadratic.P2];
-				case EdgeSegmentType.Cubic:
-					return [cubic.P0, cubic.P1, cubic.P2, cubic.P3];
+				//case EdgeSegmentType.Cubic:
+					//return [cubic.P0, cubic.P1, cubic.P2, cubic.P3];
 				default:
 					throw new InvalidOperationException();
 			}
@@ -190,7 +190,7 @@ namespace SharpMSDF.Core
 			{
 				EdgeSegmentType.Linear => new EdgeSegment(linear, color),
 				EdgeSegmentType.Quadratic => new EdgeSegment(quadratic, color),
-				EdgeSegmentType.Cubic => new EdgeSegment(cubic, color),
+				//EdgeSegmentType.Cubic => new EdgeSegment(cubic, color),
 				_ => this
 			};
 		}
@@ -200,10 +200,10 @@ namespace SharpMSDF.Core
 			return quadratic;
 		}
 
-		internal CubicSegment GetCubic()
+		/*internal CubicSegment GetCubic()
 		{
 			return cubic;
-		}
+		}*/
 
 		public int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 		{
@@ -213,8 +213,8 @@ namespace SharpMSDF.Core
 					return linear.ScanlineIntersections(x, dy, y);
 				case EdgeSegmentType.Quadratic:
 					return quadratic.ScanlineIntersections(x, dy, y);
-				case EdgeSegmentType.Cubic:
-					return cubic.ScanlineIntersections(x, dy, y);
+				/*case EdgeSegmentType.Cubic:
+					return cubic.ScanlineIntersections(x, dy, y);*/
 				default:
 					throw new InvalidOperationException();
 			}
@@ -521,13 +521,13 @@ namespace SharpMSDF.Core
 			};
 		}
 
-		public CubicSegment ConvertToCubic()
+		/*public CubicSegment ConvertToCubic()
 		{
 			return new CubicSegment(P0,
 							 Vector2.Lerp(P0, P1, 2.0f / 3.0f),
 							 Vector2.Lerp(P1, P2, 1.0f / 3.0f),
 							 P2);
-		}
+		}*/
 
 		public int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 		{
@@ -607,7 +607,7 @@ namespace SharpMSDF.Core
 
 	}
 
-	public struct CubicSegment
+	/*public struct CubicSegment
 	{
 		public const int MSDFGEN_CUBIC_SEARCH_STARTS = 4;
 		public const int MSDFGEN_CUBIC_SEARCH_STEPS = 4;
@@ -845,5 +845,5 @@ namespace SharpMSDF.Core
 			}
 			return total;
 		}
-	}
+	}*/
 }

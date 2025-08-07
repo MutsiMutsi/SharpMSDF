@@ -71,7 +71,7 @@ namespace SharpMSDF.Core
 			return true;
 		}
 
-		private static void DeconvergeEdge(ref EdgeSegment edgeSegment, int param, Vector2 vector)
+		/*private static void DeconvergeEdge(ref EdgeSegment edgeSegment, int param, Vector2 vector)
 		{
 			switch (edgeSegment.Type)
 			{
@@ -111,7 +111,7 @@ namespace SharpMSDF.Core
 						break;
 					}
 			}
-		}
+		}*/
 
 		/// <summary>
 		/// Normalizes the Shape geometry for distance field generation.
@@ -145,8 +145,8 @@ namespace SharpMSDF.Core
 								axis = -axis;
 
 
-							DeconvergeEdge(ref prevEdge, 1, axis.GetOrthogonal(true));
-							DeconvergeEdge(ref edge, 0, axis.GetOrthogonal(false));
+							//DeconvergeEdge(ref prevEdge, 1, axis.GetOrthogonal(true));
+							//DeconvergeEdge(ref edge, 0, axis.GetOrthogonal(false));
 						}
 						prevEdge = edge;
 					}

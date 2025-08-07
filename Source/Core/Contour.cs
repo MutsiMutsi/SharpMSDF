@@ -3,8 +3,12 @@ using System.Numerics;
 namespace SharpMSDF.Core
 {
 
-	public class Contour
+	public struct Contour
 	{
+		public Contour()
+		{
+			
+		}
 
 		public List<EdgeSegment> Edges = [];
 

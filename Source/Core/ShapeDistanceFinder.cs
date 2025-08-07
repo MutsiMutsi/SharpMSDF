@@ -5,15 +5,12 @@ namespace SharpMSDF.Core
 {
 	public unsafe struct ShapeMultiDistanceFinder
 	{
-		private readonly Shape _shape;
 		private OverlappingContourCombinerMultiDistance _contourCombiner;
 		private readonly EdgeCache* _shapeEdgeCache;
 		private readonly void* _memory; // For cleanup tracking
 
-		public ShapeMultiDistanceFinder(Shape shape, Span<byte> workingMemory)
+		public ShapeMultiDistanceFinder(ref Shape shape, Span<byte> workingMemory)
 		{
-			_shape = shape;
-
 			int edgeCacheSize = shape.EdgeCount() * sizeof(EdgeCache);
 			int combinerMemorySize = OverlappingContourCombinerMultiDistance.GetRequiredMemorySize(shape.Contours.Count);
 			int totalRequiredSize = edgeCacheSize + combinerMemorySize;
@@ -32,15 +29,15 @@ namespace SharpMSDF.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public MultiDistance Distance(Vector2 origin)
+		public MultiDistance Distance(ref Shape shape, Vector2 origin)
 		{
 			_contourCombiner.Reset(origin);
 
 			EdgeCache* edgeCache = _shapeEdgeCache;
 
-			for (int c = 0; c < _shape.Contours.Count; c++)
+			for (int c = 0; c < shape.Contours.Count; c++)
 			{
-				var contour = _shape.Contours[c];
+				var contour = shape.Contours[c];
 				if (contour.Edges.Count > 0)
 				{
 					var edgeSelector = _contourCombiner.EdgeSelector(c);
