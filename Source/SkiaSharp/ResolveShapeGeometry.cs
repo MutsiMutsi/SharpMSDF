@@ -2,6 +2,7 @@
 
 using SharpMSDF.Core;
 using SkiaSharp;
+using System.Numerics;
 
 namespace SharpMSDF.SkiaSharp
 {
@@ -203,14 +204,14 @@ namespace SharpMSDF.SkiaSharp
 				}
 			}
 		}
-		private static int Sign(double value)
+		private static int Sign(float value)
 		{
 			if (value > 0) return 1;
 			if (value < 0) return -1;
 			return 0;
 		}
 
-		private static double CrossProduct(Vector2 a, Vector2 b)
+		private static float CrossProduct(Vector2 a, Vector2 b)
 		{
 			return a.X * b.Y - a.Y * b.X;
 		}

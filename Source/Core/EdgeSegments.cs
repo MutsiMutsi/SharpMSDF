@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.IO;
+using System.Numerics;
 
 namespace SharpMSDF.Core
 {
@@ -47,7 +48,7 @@ namespace SharpMSDF.Core
 			cubic = segment;
 		}
 
-		public Vector2 Point(double t)
+		public Vector2 Point(float t)
 			=> Type switch
 			{
 				EdgeSegmentType.Linear => linear.Point(t),
@@ -56,7 +57,7 @@ namespace SharpMSDF.Core
 				_ => default
 			};
 
-		public Vector2 Direction(double t)
+		public Vector2 Direction(float t)
 			=> Type switch
 			{
 				EdgeSegmentType.Linear => linear.Direction(t),
@@ -65,7 +66,7 @@ namespace SharpMSDF.Core
 				_ => default
 			};
 
-		public SignedDistance SignedDistance(Vector2 origin, out double param)
+		public SignedDistance SignedDistance(Vector2 origin, out float param)
 			=> Type switch
 			{
 				EdgeSegmentType.Linear => linear.SignedDistance(origin, out param),
@@ -74,7 +75,7 @@ namespace SharpMSDF.Core
 				_ => throw new InvalidOperationException()
 			};
 
-		public void Bound(ref double l, ref double b, ref double r, ref double t)
+		public void Bound(ref float l, ref float b, ref float r, ref float t)
 		{
 			switch (Type)
 			{
@@ -119,7 +120,7 @@ namespace SharpMSDF.Core
 			};
 		}
 
-		public Vector2 DirectionChange(double param)
+		public Vector2 DirectionChange(float param)
 		{
 			switch (Type)
 			{
@@ -150,16 +151,16 @@ namespace SharpMSDF.Core
 			}
 		}
 
-		public void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, double param)
+		public void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, float param)
 		{
 			if (param < 0)
 			{
-				Vector2 dir = Direction(0).Normalize();
+				Vector2 dir = Vector2.Normalize(Direction(0));
 				Vector2 aq = origin - Point(0);
-				double ts = Vector2.Dot(aq, dir);
+				float ts = Vector2.Dot(aq, dir);
 				if (ts < 0)
 				{
-					double perp = Vector2.Cross(aq, dir);
+					float perp = VectorExtensions.Cross(aq, dir);
 					if (Math.Abs(perp) <= Math.Abs(distance.Distance))
 					{
 						distance.Distance = perp;
@@ -169,12 +170,12 @@ namespace SharpMSDF.Core
 			}
 			else if (param > 1)
 			{
-				Vector2 dir = Direction(1).Normalize();
+				Vector2 dir = Vector2.Normalize(Direction(1));
 				Vector2 bq = origin - Point(1);
-				double ts = Vector2.Dot(bq, dir);
+				float ts = Vector2.Dot(bq, dir);
 				if (ts > 0)
 				{
-					double perp = Vector2.Cross(bq, dir);
+					float perp = VectorExtensions.Cross(bq, dir);
 					if (Math.Abs(perp) <= Math.Abs(distance.Distance))
 					{
 						distance.Distance = perp;
@@ -205,7 +206,7 @@ namespace SharpMSDF.Core
 			return cubic;
 		}
 
-		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 		{
 			switch (Type)
 			{
@@ -232,30 +233,30 @@ namespace SharpMSDF.Core
 			P1 = p1;
 		}
 
-		public Vector2 Point(double t) => Arithmetic.Mix(P0, P1, t);
-		public Vector2 Direction(double _) => P1 - P0;
+		public Vector2 Point(float t) => Vector2.Lerp(P0, P1, t);
+		public Vector2 Direction(float _) => P1 - P0;
 
-		public SignedDistance SignedDistance(Vector2 origin, out double param)
+		public SignedDistance SignedDistance(Vector2 origin, out float param)
 		{
 			Vector2 aq = origin - P0;
 			Vector2 ab = P1 - P0;
 			param = Vector2.Dot(aq, ab) / Vector2.Dot(ab, ab);
 			Vector2 eq = (param > 0.5) ? P1 - origin : P0 - origin;
-			double endpointDist = eq.Length();
+			float endpointDist = eq.Length();
 
 			if (param > 0 && param < 1)
 			{
-				double ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
+				float ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
 				if (Math.Abs(ortho) < endpointDist)
 					return new SignedDistance(ortho, 0);
 			}
 
-			double sign = Arithmetic.NonZeroSign(Vector2.Cross(aq, ab));
+			float sign = Arithmetic.NonZeroSign(VectorExtensions.Cross(aq, ab));
 			return new SignedDistance(sign * endpointDist,
-				Math.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
+				Math.Abs(Vector2.Dot(Vector2.Normalize(ab), Vector2.Normalize(eq))));
 		}
 
-		public void Bound(ref double l, ref double b, ref double r, ref double t)
+		public void Bound(ref float l, ref float b, ref float r, ref float t)
 		{
 			if (P0.X < l)
 			{
@@ -300,9 +301,9 @@ namespace SharpMSDF.Core
 
 		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2, EdgeColor color)
 		{
-			part0 = new EdgeSegment(new LinearSegment(P0, Point(1.0 / 3.0)), color);
-			part1 = new EdgeSegment(new LinearSegment(Point(1.0 / 3.0), Point(2.0 / 3.0)), color);
-			part2 = new EdgeSegment(new LinearSegment(Point(2.0 / 3.0), P1), color);
+			part0 = new EdgeSegment(new LinearSegment(P0, Point(1.0f / 3.0f)), color);
+			part1 = new EdgeSegment(new LinearSegment(Point(1.0f / 3.0f), Point(2.0f / 3.0f)), color);
+			part2 = new EdgeSegment(new LinearSegment(Point(2.0f / 3.0f), P1), color);
 		}
 
 		public LinearSegment Reverse()
@@ -310,18 +311,18 @@ namespace SharpMSDF.Core
 			return new LinearSegment(P1, P0);
 		}
 
-		public Vector2 DirectionChange(double t)
+		public Vector2 DirectionChange(float t)
 		{
 			return new Vector2 { X = 0, Y = 0 };
 		}
 
-		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 		{
 			if ((y >= P0.Y && y < P1.Y) || (y >= P1.Y && y < P0.Y))
 			{
-				double param = (y - P0.Y) / (P1.Y - P0.Y);
+				float param = (y - P0.Y) / (P1.Y - P0.Y);
 				x[0] = Arithmetic.Mix(P0.X, P1.X, param);
-				dy[0] = Arithmetic.Sign(P1.Y - P0.Y);
+				dy[0] = float.Sign(P1.Y - P0.Y);
 				return 1;
 			}
 			return 0;
@@ -341,18 +342,18 @@ namespace SharpMSDF.Core
 			P2 = p2;
 		}
 
-		public Vector2 Point(double t)
+		public Vector2 Point(float t)
 		{
-			return Arithmetic.Mix(Arithmetic.Mix(P0, P1, t), Arithmetic.Mix(P1, P2, t), t);
+			return Vector2.Lerp(Vector2.Lerp(P0, P1, t), Vector2.Lerp(P1, P2, t), t);
 		}
 
-		public Vector2 Direction(double t)
+		public Vector2 Direction(float t)
 		{
-			Vector2 tangent = Arithmetic.Mix(P1 - P0, P2 - P1, t);
+			Vector2 tangent = Vector2.Lerp(P1 - P0, P2 - P1, t);
 			return tangent.Length() == 0 ? P2 - P0 : tangent;
 		}
 
-		public SignedDistance SignedDistance(Vector2 origin, out double param)
+		public SignedDistance SignedDistance(Vector2 origin, out float param)
 		{
 			// compute helper vectors
 			Vector2 qa = P0 - origin;
@@ -360,26 +361,26 @@ namespace SharpMSDF.Core
 			Vector2 br = P2 - P1 - ab;
 
 			// cubic coefficients for |Q(param)|² derivative = 0
-			double a = Vector2.Dot(br, br);
-			double b = 3 * Vector2.Dot(ab, br);
-			double c = (2 * Vector2.Dot(ab, ab)) + Vector2.Dot(qa, br);
-			double d = Vector2.Dot(qa, ab);
+			float a = Vector2.Dot(br, br);
+			float b = 3 * Vector2.Dot(ab, br);
+			float c = (2 * Vector2.Dot(ab, ab)) + Vector2.Dot(qa, br);
+			float d = Vector2.Dot(qa, ab);
 
 			// solve for param in [0,1]
-			Span<double> t = stackalloc double[3];
+			Span<float> t = stackalloc float[3];
 			int solutions = EquationSolver.SolveCubic(t, a, b, c, d);
 
 			// start by assuming the closest is at param=0 (Point A)
 			Vector2 epDir = Direction(0);
-			double minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length();
+			float minDistance = Arithmetic.NonZeroSign(VectorExtensions.Cross(epDir, qa)) * qa.Length();
 			param = -Vector2.Dot(qa, epDir) / Vector2.Dot(epDir, epDir);
 
 			// check endpoint B (param=1)
 			epDir = Direction(1);
-			double distB = new Vector2(P2.X - origin.X, P2.Y - origin.Y).Length();
+			float distB = new Vector2(P2.X - origin.X, P2.Y - origin.Y).Length();
 			if (distB < Math.Abs(minDistance))
 			{
-				minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, new Vector2(P2.X - origin.X, P2.Y - origin.Y))) * distB;
+				minDistance = Arithmetic.NonZeroSign(VectorExtensions.Cross(epDir, new Vector2(P2.X - origin.X, P2.Y - origin.Y))) * distB;
 				param = Vector2.Dot(new Vector2(origin.X - P1.X, origin.Y - P1.Y), epDir)
 						/ Vector2.Dot(epDir, epDir);
 			}
@@ -394,10 +395,10 @@ namespace SharpMSDF.Core
 						qa.X + (2 * t[i] * ab.X) + (t[i] * t[i] * br.X),
 						qa.Y + (2 * t[i] * ab.Y) + (t[i] * t[i] * br.Y)
 					);
-					double dist = qe.Length();
+					float dist = qe.Length();
 					if (dist <= Math.Abs(minDistance))
 					{
-						minDistance = Arithmetic.NonZeroSign(Vector2.Cross(ab + (t[i] * br), qe)) * dist;
+						minDistance = Arithmetic.NonZeroSign(VectorExtensions.Cross(ab + (t[i] * br), qe)) * dist;
 						param = t[i];
 					}
 				}
@@ -410,16 +411,16 @@ namespace SharpMSDF.Core
 			}
 			else if (param < 0.5)
 			{
-				Vector2 dir0 = Direction(0).Normalize();
+				Vector2 dir0 = Vector2.Normalize(Direction(0));
 				return new SignedDistance(
 					minDistance,
-					Math.Abs(Vector2.Dot(dir0, qa.Normalize()))
+					Math.Abs(Vector2.Dot(dir0, Vector2.Normalize(qa)))
 				);
 			}
 			else
 			{
-				Vector2 dir1 = Direction(1).Normalize();
-				Vector2 bq = new Vector2(P2.X - origin.X, P2.Y - origin.Y).Normalize();
+				Vector2 dir1 = Vector2.Normalize(Direction(1));
+				Vector2 bq = Vector2.Normalize(new Vector2(P2.X - origin.X, P2.Y - origin.Y));
 				return new SignedDistance(
 					minDistance,
 					Math.Abs(Vector2.Dot(dir1, bq))
@@ -427,14 +428,14 @@ namespace SharpMSDF.Core
 			}
 		}
 
-		public void Bound(ref double l, ref double b, ref double r, ref double t)
+		public void Bound(ref float l, ref float b, ref float r, ref float t)
 		{
 			PointBounds(P0, ref l, ref b, ref r, ref t);
 			PointBounds(P2, ref l, ref b, ref r, ref t);
 			Vector2 bot = P1 - P0 - (P2 - P1);
 			if (bot.X != 0)
 			{
-				double param = (P1.X - P0.X) / bot.X;
+				float param = (P1.X - P0.X) / bot.X;
 				if (param is > 0 and < 1)
 				{
 					PointBounds(Point(param), ref l, ref b, ref r, ref t);
@@ -442,7 +443,7 @@ namespace SharpMSDF.Core
 			}
 			if (bot.Y != 0)
 			{
-				double param = (P1.Y - P0.Y) / bot.Y;
+				float param = (P1.Y - P0.Y) / bot.Y;
 				if (param is > 0 and < 1)
 				{
 					PointBounds(Point(param), ref l, ref b, ref r, ref t);
@@ -450,7 +451,7 @@ namespace SharpMSDF.Core
 			}
 		}
 
-		private static void PointBounds(Vector2 p, ref double l, ref double b, ref double r, ref double t)
+		private static void PointBounds(Vector2 p, ref float l, ref float b, ref float r, ref float t)
 		{
 			if (p.X < l)
 			{
@@ -475,9 +476,9 @@ namespace SharpMSDF.Core
 
 		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2, EdgeColor color)
 		{
-			part0 = new EdgeSegment(new QuadraticSegment(P0, Arithmetic.Mix(P0, P1, 1 / 3.0), Point(1 / 3.0)), color);
-			part1 = new EdgeSegment(new QuadraticSegment(Point(1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P0, P1, 5 / 9.0), Arithmetic.Mix(P1, P2, 4 / 9.0), .5), Point(2 / 3.0)), color);
-			part2 = new EdgeSegment(new QuadraticSegment(Point(2 / 3.0), Arithmetic.Mix(P1, P2, 2 / 3.0), P2), color);
+			part0 = new EdgeSegment(new QuadraticSegment(P0, Vector2.Lerp(P0, P1, 1 / 3.0f), Point(1f / 3.0f)), color);
+			part1 = new EdgeSegment(new QuadraticSegment(Point(1f / 3.0f), Vector2.Lerp(Vector2.Lerp(P0, P1, 5 / 9.0f), Vector2.Lerp(P1, P2, 4 / 9.0f), .5f), Point(2f / 3.0f)), color);
+			part2 = new EdgeSegment(new QuadraticSegment(Point(2f / 3.0f), Vector2.Lerp(P1, P2, 2 / 3.0f), P2), color);
 		}
 
 		public QuadraticSegment Reverse()
@@ -485,7 +486,7 @@ namespace SharpMSDF.Core
 			return new QuadraticSegment(P2, P1, P0);
 		}
 
-		public Vector2 DirectionChange(double t)
+		public Vector2 DirectionChange(float t)
 		{
 			return new Vector2
 			{
@@ -497,12 +498,12 @@ namespace SharpMSDF.Core
 		public CubicSegment ConvertToCubic()
 		{
 			return new CubicSegment(P0,
-							 Arithmetic.Mix(P0, P1, 2.0 / 3.0),
-							 Arithmetic.Mix(P1, P2, 1.0 / 3.0),
+							 Vector2.Lerp(P0, P1, 2.0f / 3.0f),
+							 Vector2.Lerp(P1, P2, 1.0f / 3.0f),
 							 P2);
 		}
 
-		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 		{
 			int total = 0;
 			int nextDY = y > P0.Y ? 1 : -1;
@@ -521,7 +522,7 @@ namespace SharpMSDF.Core
 			{
 				Vector2 ab = P1 - P0;
 				Vector2 br = P2 - P1 - ab;
-				Span<double> t = stackalloc double[2];
+				Span<float> t = stackalloc float[2];
 				int solutions = EquationSolver.SolveQuadratic(t, br.Y, 2 * ab.Y, P0.Y - y);
 				// Sort solutions
 				if (solutions >= 2 && t[0] > t[1])
@@ -599,25 +600,25 @@ namespace SharpMSDF.Core
 			P3 = p3;
 		}
 
-		public Vector2 Point(double t)
+		public Vector2 Point(float t)
 		{
-			Vector2 a = Arithmetic.Mix(P0, P1, t);
-			Vector2 b = Arithmetic.Mix(P1, P2, t);
-			Vector2 c = Arithmetic.Mix(P2, P3, t);
-			Vector2 ab = Arithmetic.Mix(a, b, t);
-			Vector2 bc = Arithmetic.Mix(b, c, t);
-			return Arithmetic.Mix(ab, bc, t);
+			Vector2 a = Vector2.Lerp(P0, P1, t);
+			Vector2 b = Vector2.Lerp(P1, P2, t);
+			Vector2 c = Vector2.Lerp(P2, P3, t);
+			Vector2 ab = Vector2.Lerp(a, b, t);
+			Vector2 bc = Vector2.Lerp(b, c, t);
+			return Vector2.Lerp(ab, bc, t);
 		}
 
-		public Vector2 Direction(double t)
+		public Vector2 Direction(float t)
 		{
-			Vector2 ab = Arithmetic.Mix(P1 - P0, P2 - P1, t);
-			Vector2 bc = Arithmetic.Mix(P2 - P1, P3 - P2, t);
-			Vector2 tangent = Arithmetic.Mix(ab, bc, t);
+			Vector2 ab = Vector2.Lerp(P1 - P0, P2 - P1, t);
+			Vector2 bc = Vector2.Lerp(P2 - P1, P3 - P2, t);
+			Vector2 tangent = Vector2.Lerp(ab, bc, t);
 			return tangent.Length() == 0 ? (t == 0 ? P2 - P0 : P3 - P1) : tangent;
 		}
 
-		public SignedDistance SignedDistance(Vector2 origin, out double param)
+		public SignedDistance SignedDistance(Vector2 origin, out float param)
 		{
 			Vector2 qa = P0 - origin;
 			Vector2 ab = P1 - P0;
@@ -625,21 +626,21 @@ namespace SharpMSDF.Core
 			Vector2 as_ = P3 - P2 - (P2 - P1) - br;
 
 			Vector2 epDir = Direction(0);
-			double minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length(); // distance from A
+			float minDistance = Arithmetic.NonZeroSign(VectorExtensions.Cross(epDir, qa)) * qa.Length(); // distance from A
 			param = -Vector2.Dot(qa, epDir) / Vector2.Dot(epDir, epDir);
 			{
 				epDir = Direction(1);
-				double distance = (P3 - origin).Length(); // distance from B
+				float distance = (P3 - origin).Length(); // distance from B
 				if (distance < Math.Abs(minDistance))
 				{
-					minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, P3 - origin)) * distance;
+					minDistance = Arithmetic.NonZeroSign(VectorExtensions.Cross(epDir, P3 - origin)) * distance;
 					param = Vector2.Dot(epDir - (P3 - origin), epDir) / Vector2.Dot(epDir, epDir);
 				}
 			}
 			// Iterative minimum distance search
 			for (int i = 0; i <= MSDFGEN_CUBIC_SEARCH_STARTS; ++i)
 			{
-				double t = (double)i / MSDFGEN_CUBIC_SEARCH_STARTS;
+				float t = (float)i / MSDFGEN_CUBIC_SEARCH_STARTS;
 				Vector2 qe = qa + (3 * t * ab) + (3 * t * t * br) + (t * t * t * as_);
 				for (int step = 0; step < MSDFGEN_CUBIC_SEARCH_STEPS; ++step)
 				{
@@ -653,10 +654,10 @@ namespace SharpMSDF.Core
 					}
 
 					qe = qa + (3 * t * ab) + (3 * t * t * br) + (t * t * t * as_);
-					double distance = qe.Length();
+					float distance = qe.Length();
 					if (distance < Math.Abs(minDistance))
 					{
-						minDistance = Arithmetic.NonZeroSign(Vector2.Cross(d1, qe)) * distance;
+						minDistance = Arithmetic.NonZeroSign(VectorExtensions.Cross(d1, qe)) * distance;
 						param = t;
 					}
 				}
@@ -668,18 +669,18 @@ namespace SharpMSDF.Core
 			}
 
 			return param < .5
-				? new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Direction(0).Normalize(), qa.Normalize())))
-				: new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Direction(1).Normalize(), (P3 - origin).Normalize())));
+				? new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Vector2.Normalize(Direction(0)), Vector2.Normalize(qa))))
+				: new SignedDistance(minDistance, Math.Abs(Vector2.Dot(Vector2.Normalize(Direction(1)), Vector2.Normalize(P3 - origin))));
 		}
 
-		public void Bound(ref double l, ref double b, ref double r, ref double t)
+		public void Bound(ref float l, ref float b, ref float r, ref float t)
 		{
 			PointBounds(P0, ref l, ref b, ref r, ref t);
 			PointBounds(P3, ref l, ref b, ref r, ref t);
 			Vector2 a0 = P1 - P0;
 			Vector2 a1 = 2 * (P2 - P1 - a0);
 			Vector2 a2 = P3 - (3 * P2) + (3 * P1) - P0;
-			Span<double> prms = stackalloc double[2];
+			Span<float> prms = stackalloc float[2];
 			int solutions;
 			solutions = EquationSolver.SolveQuadratic(prms, a2.X, a1.X, a0.X);
 			for (int i = 0; i < solutions; ++i)
@@ -702,7 +703,7 @@ namespace SharpMSDF.Core
 			PointBounds(P0, ref l, ref b, ref r, ref t);
 		}
 
-		private static void PointBounds(Vector2 p, ref double l, ref double b, ref double r, ref double t)
+		private static void PointBounds(Vector2 p, ref float l, ref float b, ref float r, ref float t)
 		{
 			if (p.X < l) l = p.X;
 			if (p.Y < b) b = p.Y;
@@ -712,12 +713,12 @@ namespace SharpMSDF.Core
 
 		public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2, EdgeColor color)
 		{
-			part0 = new EdgeSegment(new CubicSegment(P0, P0 == P1 ? P0 : Arithmetic.Mix(P0, P1, 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P0, P1, 1 / 3.0), Arithmetic.Mix(P1, P2, 1 / 3.0), 1 / 3.0), Point(1 / 3.0)), color);
-			part1 = new EdgeSegment(new CubicSegment(Point(1 / 3.0),
-				Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P0, P1, 1 / 3.0), Arithmetic.Mix(P1, P2, 1 / 3.0), 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P1, P2, 1 / 3.0), Arithmetic.Mix(P2, P3, 1 / 3.0), 1 / 3.0), 2 / 3.0),
-				Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P0, P1, 2 / 3.0), Arithmetic.Mix(P1, P2, 2 / 3.0), 2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P1, P2, 2 / 3.0), Arithmetic.Mix(P2, P3, 2 / 3.0), 2 / 3.0), 1 / 3.0),
-				Point(2 / 3.0)), color);
-			part2 = new EdgeSegment(new CubicSegment(Point(2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P1, P2, 2 / 3.0), Arithmetic.Mix(P2, P3, 2 / 3.0), 2 / 3.0), P2 == P3 ? P3 : Arithmetic.Mix(P2, P3, 2 / 3.0), P3), color);
+			part0 = new EdgeSegment(new CubicSegment(P0, P0 == P1 ? P0 : Vector2.Lerp(P0, P1, 1 / 3.0f), Vector2.Lerp(Vector2.Lerp(P0, P1, 1 / 3.0f), Vector2.Lerp(P1, P2, 1 / 3.0f), 1 / 3.0f), Point(1 / 3.0f)), color);
+			part1 = new EdgeSegment(new CubicSegment(Point(1 / 3.0f),
+				Vector2.Lerp(Vector2.Lerp(Vector2.Lerp(P0, P1, 1 / 3.0f), Vector2.Lerp(P1, P2, 1 / 3.0f), 1 / 3.0f), Vector2.Lerp(Vector2.Lerp(P1, P2, 1 / 3.0f), Vector2.Lerp(P2, P3, 1 / 3.0f), 1 / 3.0f), 2 / 3.0f),
+				Vector2.Lerp(Vector2.Lerp(Vector2.Lerp(P0, P1, 2 / 3.0f), Vector2.Lerp(P1, P2, 2 / 3.0f), 2 / 3.0f), Vector2.Lerp(Vector2.Lerp(P1, P2, 2 / 3.0f), Vector2.Lerp(P2, P3, 2 / 3.0f), 2 / 3.0f), 1 / 3.0f),
+				Point(2 / 3.0f)), color);
+			part2 = new EdgeSegment(new CubicSegment(Point(2 / 3.0f), Vector2.Lerp(Vector2.Lerp(P1, P2, 2 / 3.0f), Vector2.Lerp(P2, P3, 2 / 3.0f), 2 / 3.0f), P2 == P3 ? P3 : Vector2.Lerp(P2, P3, 2 / 3.0f), P3), color);
 		}
 
 		public CubicSegment Reverse()
@@ -725,13 +726,13 @@ namespace SharpMSDF.Core
 			return new CubicSegment(P3, P2, P1, P0);
 		}
 
-		public Vector2 DirectionChange(double t)
+		public Vector2 DirectionChange(float t)
 		{
-			return Arithmetic.Mix(P2 - P1 - (P1 - P0),
+			return Vector2.Lerp(P2 - P1 - (P1 - P0),
 				P3 - P2 - (P2 - P1), t);
 		}
 
-		public int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+		public int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 		{
 			int total = 0;
 			int nextDY = y > P0.Y ? 1 : -1;
@@ -751,7 +752,7 @@ namespace SharpMSDF.Core
 				Vector2 ab = P1 - P0;
 				Vector2 br = P2 - P1 - ab;
 				Vector2 as_ = P3 - P2 - (P2 - P1) - br;
-				Span<double> t = stackalloc double[3];
+				Span<float> t = stackalloc float[3];
 				int solutions = EquationSolver.SolveCubic(t, as_.Y, 3 * br.Y, 3 * ab.Y, P0.Y - y);
 				// Sort solutions
 				if (solutions >= 2)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.Core
@@ -6,8 +7,8 @@ namespace SharpMSDF.Core
 	internal static class DistanceUtils
 	{
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static double ResolveDistance(ref MultiDistance d) =>
-			Arithmetic.Median(d.R, d.G, d.B);
+		public static float ResolveDistance(ref MultiDistance d) =>
+			MathF.Max(MathF.Min(d.R, d.G), MathF.Min(MathF.Max(d.R, d.G), d.B));
 	}
 
 	public unsafe struct OverlappingContourCombinerMultiDistance
@@ -75,7 +76,7 @@ namespace SharpMSDF.Core
 				MultiDistance edgeDistance = edgeSelectors[i].Distance();
 				shapeEdgeSelector.Merge(ref edgeSelectors[i]);
 
-				double dist = DistanceUtils.ResolveDistance(ref edgeDistance);
+				float dist = DistanceUtils.ResolveDistance(ref edgeDistance);
 				if (windings[i] > 0 && dist >= 0)
 					innerEdgeSelector.Merge(ref edgeSelectors[i]);
 				if (windings[i] < 0 && dist <= 0)
@@ -86,14 +87,14 @@ namespace SharpMSDF.Core
 			MultiDistance innerDistance = innerEdgeSelector.Distance();
 			MultiDistance outerDistance = outerEdgeSelector.Distance();
 
-			double innerDist = DistanceUtils.ResolveDistance(ref innerDistance);
-			double outerDist = DistanceUtils.ResolveDistance(ref outerDistance);
+			float innerDist = DistanceUtils.ResolveDistance(ref innerDistance);
+			float outerDist = DistanceUtils.ResolveDistance(ref outerDistance);
 
 			MultiDistance distance = new MultiDistance
 			{
-				R = -double.MaxValue,
-				G = -double.MaxValue,
-				B = -double.MaxValue
+				R = -float.MaxValue,
+				G = -float.MaxValue,
+				B = -float.MaxValue
 			};
 
 			int winding = 0;
@@ -107,7 +108,7 @@ namespace SharpMSDF.Core
 					if (windings[i] > 0)
 					{
 						var contourDist = edgeSelectors[i].Distance();
-						double contourRes = DistanceUtils.ResolveDistance(ref contourDist);
+						float contourRes = DistanceUtils.ResolveDistance(ref contourDist);
 						if (Math.Abs(contourRes) < Math.Abs(outerDist) && contourRes > DistanceUtils.ResolveDistance(ref distance))
 							distance = contourDist;
 					}
@@ -122,7 +123,7 @@ namespace SharpMSDF.Core
 					if (windings[i] < 0)
 					{
 						var contourDist = edgeSelectors[i].Distance();
-						double contourRes = DistanceUtils.ResolveDistance(ref contourDist);
+						float contourRes = DistanceUtils.ResolveDistance(ref contourDist);
 						if (Math.Abs(contourRes) < Math.Abs(innerDist) && contourRes < DistanceUtils.ResolveDistance(ref distance))
 							distance = contourDist;
 					}
@@ -138,8 +139,8 @@ namespace SharpMSDF.Core
 				if (windings[i] != winding)
 				{
 					var contourDist = edgeSelectors[i].Distance();
-					double res = DistanceUtils.ResolveDistance(ref contourDist);
-					double distRes = DistanceUtils.ResolveDistance(ref distance);
+					float res = DistanceUtils.ResolveDistance(ref contourDist);
+					float distRes = DistanceUtils.ResolveDistance(ref distance);
 					if (res * distRes >= 0 && Math.Abs(res) < Math.Abs(distRes))
 						distance = contourDist;
 				}

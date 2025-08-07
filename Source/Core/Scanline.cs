@@ -1,8 +1,8 @@
-﻿using static SharpMSDF.Core.Scanline;
+﻿//using static SharpMSDF.Core.Scanline;
 
 namespace SharpMSDF.Core
 {
-    public class Scanline
+    /*public class Scanline
     {
         
         ///<summary>
@@ -161,5 +161,5 @@ namespace SharpMSDF.Core
         FILL_ODD, // "even-odd"
         FILL_POSITIVE,
         FILL_NEGATIVE
-    }
+    }*/
 }

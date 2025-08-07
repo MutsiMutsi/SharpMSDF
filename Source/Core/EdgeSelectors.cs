@@ -1,19 +1,19 @@
-﻿using System;
+﻿using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.Core
 {
 	public struct MultiDistance
 	{
-		public double R, G, B;
+		public float R, G, B;
 	}
 
 	public struct EdgeCache
 	{
 		public Vector2 Point;
-		public double AbsDistance;
-		public double ADomainDistance, BDomainDistance;
-		public double APerpDistance, BPerpDistance;
+		public float AbsDistance;
+		public float ADomainDistance, BDomainDistance;
+		public float APerpDistance, BPerpDistance;
 	}
 
 	public unsafe ref struct PerpendicularDistanceSelector
@@ -21,12 +21,12 @@ namespace SharpMSDF.Core
 		private Vector2 _p;
 		private PerpendicularDistanceSelectorBase _base;
 
-		public const double DISTANCE_DELTA_FACTOR = 1.001;
+		public const float DISTANCE_DELTA_FACTOR = 1.001f;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Reset(Vector2 p)
 		{
-			double delta = DISTANCE_DELTA_FACTOR * (p - _p).Length();
+			float delta = DISTANCE_DELTA_FACTOR * (p - _p).Length();
 			_base.Reset(delta);
 			_p = p;
 		}
@@ -41,34 +41,39 @@ namespace SharpMSDF.Core
 		{
 			if (_base.IsEdgeRelevant(*cache, edge, _p))
 			{
-				double param;
-				var dist = edge.SignedDistance(_p, out param);
+				SignedDistance dist = edge.SignedDistance(_p, out float param);
 				_base.AddEdgeTrueDistance(edge, dist, param);
 				cache->Point = _p;
-				cache->AbsDistance = Math.Abs(dist.Distance);
+				cache->AbsDistance = MathF.Abs(dist.Distance);
 
 				Vector2 ap = _p - edge.Point(0);
 				Vector2 bp = _p - edge.Point(1);
-				Vector2 aDir = edge.Direction(0).Normalize(true);
-				Vector2 bDir = edge.Direction(1).Normalize(true);
-				Vector2 prevDir = prevEdge.Direction(1).Normalize(true);
-				Vector2 nextDir = nextEdge.Direction(0).Normalize(true);
+				Vector2 aDir = Vector2.Normalize(edge.Direction(0));
+				Vector2 bDir = Vector2.Normalize(edge.Direction(1));
+				Vector2 prevDir = Vector2.Normalize(prevEdge.Direction(1));
+				Vector2 nextDir = Vector2.Normalize(nextEdge.Direction(0));
 
-				double add = Vector2.Dot(ap, (prevDir + aDir).Normalize(true));
-				double bdd = -Vector2.Dot(bp, (bDir + nextDir).Normalize(true));
+				float add = Vector2.Dot(ap, Vector2.Normalize(prevDir + aDir));
+				float bdd = -Vector2.Dot(bp, Vector2.Normalize(bDir + nextDir));
 
 				if (add > 0)
 				{
-					double pd = dist.Distance;
+					float pd = dist.Distance;
 					if (PerpendicularDistanceSelectorBase.GetPerpendicularDistance(ref pd, ap, -aDir))
+					{
 						_base.AddEdgePerpendicularDistance(-pd);
+					}
+
 					cache->APerpDistance = pd;
 				}
 				if (bdd > 0)
 				{
-					double pd = dist.Distance;
+					float pd = dist.Distance;
 					if (PerpendicularDistanceSelectorBase.GetPerpendicularDistance(ref pd, bp, bDir))
+					{
 						_base.AddEdgePerpendicularDistance(pd);
+					}
+
 					cache->BPerpDistance = pd;
 				}
 				cache->ADomainDistance = add;
@@ -77,20 +82,26 @@ namespace SharpMSDF.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public double ComputeDistance(Vector2 p) => _base.ComputeDistance(p);
+		public float ComputeDistance(Vector2 p)
+		{
+			return _base.ComputeDistance(p);
+		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public SignedDistance TrueDistance() => _base.TrueDistance();
+		public SignedDistance TrueDistance()
+		{
+			return _base.TrueDistance();
+		}
 	}
 
 	public ref struct PerpendicularDistanceSelectorBase
 	{
 		private SignedDistance _minTrueDistance;
-		private double _minNegPerp, _minPosPerp;
+		private float _minNegPerp, _minPosPerp;
 		private EdgeSegment _nearEdge;
-		private double _nearEdgeParam;
+		private float _nearEdgeParam;
 
-		public const double DISTANCE_DELTA_FACTOR = 1.001;
+		public const float DISTANCE_DELTA_FACTOR = 1.001f;
 
 		public PerpendicularDistanceSelectorBase()
 		{
@@ -101,12 +112,12 @@ namespace SharpMSDF.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool GetPerpendicularDistance(ref double distance, Vector2 ep, Vector2 edgeDir)
+		public static bool GetPerpendicularDistance(ref float distance, Vector2 ep, Vector2 edgeDir)
 		{
-			double ts = Vector2.Dot(ep, edgeDir);
+			float ts = Vector2.Dot(ep, edgeDir);
 			if (ts > 0)
 			{
-				double perp = Vector2.Cross(ep, edgeDir);
+				float perp = VectorExtensions.Cross(ep, edgeDir);
 				if (Math.Abs(perp) < Math.Abs(distance))
 				{
 					distance = perp;
@@ -117,7 +128,7 @@ namespace SharpMSDF.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Reset(double delta)
+		public void Reset(float delta)
 		{
 			_minTrueDistance.Distance += Arithmetic.NonZeroSign(_minTrueDistance.Distance) * delta;
 			_minNegPerp = -Math.Abs(_minTrueDistance.Distance);
@@ -128,7 +139,7 @@ namespace SharpMSDF.Core
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool IsEdgeRelevant(EdgeCache cache, EdgeSegment edge, Vector2 p)
 		{
-			double delta = DISTANCE_DELTA_FACTOR * (p - cache.Point).Length();
+			float delta = DISTANCE_DELTA_FACTOR * (p - cache.Point).Length();
 			return
 				cache.AbsDistance - delta <= Math.Abs(_minTrueDistance.Distance)
 				|| Math.Abs(cache.ADomainDistance) < delta
@@ -146,7 +157,7 @@ namespace SharpMSDF.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal void AddEdgeTrueDistance(EdgeSegment edge, SignedDistance dist, double param)
+		internal void AddEdgeTrueDistance(EdgeSegment edge, SignedDistance dist, float param)
 		{
 			if (dist < _minTrueDistance)
 			{
@@ -157,10 +168,17 @@ namespace SharpMSDF.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal void AddEdgePerpendicularDistance(double d)
+		internal void AddEdgePerpendicularDistance(float d)
 		{
-			if (d <= 0 && d > _minNegPerp) _minNegPerp = d;
-			if (d >= 0 && d < _minPosPerp) _minPosPerp = d;
+			if (d <= 0 && d > _minNegPerp)
+			{
+				_minNegPerp = d;
+			}
+
+			if (d >= 0 && d < _minPosPerp)
+			{
+				_minPosPerp = d;
+			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -172,25 +190,37 @@ namespace SharpMSDF.Core
 				_nearEdge = other._nearEdge;
 				_nearEdgeParam = other._nearEdgeParam;
 			}
-			if (other._minNegPerp > _minNegPerp) _minNegPerp = other._minNegPerp;
-			if (other._minPosPerp < _minPosPerp) _minPosPerp = other._minPosPerp;
+			if (other._minNegPerp > _minNegPerp)
+			{
+				_minNegPerp = other._minNegPerp;
+			}
+
+			if (other._minPosPerp < _minPosPerp)
+			{
+				_minPosPerp = other._minPosPerp;
+			}
 		}
 
-		internal double ComputeDistance(Vector2 p)
+		internal float ComputeDistance(Vector2 p)
 		{
-			double best = _minTrueDistance.Distance < 0 ? _minNegPerp : _minPosPerp;
+			float best = _minTrueDistance.Distance < 0 ? _minNegPerp : _minPosPerp;
 			if (_nearEdge.Type != EdgeSegmentType.None)
 			{
-				var sd = _minTrueDistance;
+				SignedDistance sd = _minTrueDistance;
 				_nearEdge.DistanceToPerpendicularDistance(ref sd, p, _nearEdgeParam);
 				if (Math.Abs(sd.Distance) < Math.Abs(best))
+				{
 					best = sd.Distance;
+				}
 			}
 			return best;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public SignedDistance TrueDistance() => _minTrueDistance;
+		public SignedDistance TrueDistance()
+		{
+			return _minTrueDistance;
+		}
 	}
 
 	public ref struct MultiDistanceSelector
@@ -211,7 +241,7 @@ namespace SharpMSDF.Core
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Reset(Vector2 p)
 		{
-			double delta = PerpendicularDistanceSelectorBase.DISTANCE_DELTA_FACTOR * (p - _p).Length();
+			float delta = PerpendicularDistanceSelectorBase.DISTANCE_DELTA_FACTOR * (p - _p).Length();
 			_r.Reset(delta);
 			_g.Reset(delta);
 			_b.Reset(delta);
@@ -221,55 +251,110 @@ namespace SharpMSDF.Core
 		public unsafe void AddEdge(EdgeCache* cache, EdgeSegment prev, EdgeSegment edge, EdgeSegment next)
 		{
 			EdgeColor color = edge.Color;
-			bool doR = (color & EdgeColor.Red) != 0 && _r.IsEdgeRelevant(*cache, edge, _p);
-			bool doG = (color & EdgeColor.Green) != 0 && _g.IsEdgeRelevant(*cache, edge, _p);
-			bool doB = (color & EdgeColor.Blue) != 0 && _b.IsEdgeRelevant(*cache, edge, _p);
-
-			if (doR || doG || doB)
+			int flags = 0;
+			if ((color & EdgeColor.Red) != 0 && _r.IsEdgeRelevant(*cache, edge, _p))
 			{
-				double param;
-				var dist = edge.SignedDistance(_p, out param);
-				if (doR) _r.AddEdgeTrueDistance(edge, dist, param);
-				if (doG) _g.AddEdgeTrueDistance(edge, dist, param);
-				if (doB) _b.AddEdgeTrueDistance(edge, dist, param);
+				flags |= 1;
+			}
 
-				cache->Point = _p;
-				cache->AbsDistance = Math.Abs(dist.Distance);
+			if ((color & EdgeColor.Green) != 0 && _g.IsEdgeRelevant(*cache, edge, _p))
+			{
+				flags |= 2;
+			}
 
-				Vector2 ap = _p - edge.Point(0);
-				Vector2 bp = _p - edge.Point(1);
-				Vector2 aDir = edge.Direction(0).Normalize(true);
-				Vector2 bDir = edge.Direction(1).Normalize(true);
-				Vector2 prevDir = prev.Direction(1).Normalize(true);
-				Vector2 nextDir = next.Direction(0).Normalize(true);
-				double add = Vector2.Dot(ap, (prevDir + aDir).Normalize(true));
-				double bdd = -Vector2.Dot(bp, (bDir + nextDir).Normalize(true));
+			if ((color & EdgeColor.Blue) != 0 && _b.IsEdgeRelevant(*cache, edge, _p))
+			{
+				flags |= 4;
+			}
 
-				if (add > 0)
+			if (flags == 0)
+			{
+				return;
+			}
+
+			SignedDistance dist = edge.SignedDistance(_p, out float param);
+			float absDist = MathF.Abs(dist.Distance);
+
+			if ((flags & 1) != 0)
+			{
+				_r.AddEdgeTrueDistance(edge, dist, param);
+			}
+
+			if ((flags & 2) != 0)
+			{
+				_g.AddEdgeTrueDistance(edge, dist, param);
+			}
+
+			if ((flags & 4) != 0)
+			{
+				_b.AddEdgeTrueDistance(edge, dist, param);
+			}
+
+			cache->Point = _p;
+			cache->AbsDistance = absDist;
+
+			Vector2 ap = _p - edge.Point(0);
+			Vector2 bp = _p - edge.Point(1);
+
+			Vector2 aDir = edge.Direction(0); ////Normalisation removed...
+			Vector2 bDir = edge.Direction(1); //Normalisation removed...
+			Vector2 prevDir = prev.Direction(1); //Normalisation removed...
+			Vector2 nextDir = next.Direction(0); //Normalisation removed...
+
+			Vector2 aSum = prevDir + aDir;
+			Vector2 bSum = bDir + nextDir;
+
+			float add = Vector2.Dot(ap, aSum); //Normalisation removed...
+			float bdd = -Vector2.Dot(bp, bSum); //Normalisation removed...
+
+			cache->ADomainDistance = add;
+			cache->BDomainDistance = bdd;
+
+			if (add > 0)
+			{
+				float pd = dist.Distance;
+				if (PerpendicularDistanceSelectorBase.GetPerpendicularDistance(ref pd, ap, -aDir))
 				{
-					double pd = dist.Distance;
-					if (PerpendicularDistanceSelectorBase.GetPerpendicularDistance(ref pd, ap, -aDir))
+					pd = -pd;
+					if ((flags & 1) != 0)
 					{
-						pd = -pd;
-						if (doR) _r.AddEdgePerpendicularDistance(pd);
-						if (doG) _g.AddEdgePerpendicularDistance(pd);
-						if (doB) _b.AddEdgePerpendicularDistance(pd);
+						_r.AddEdgePerpendicularDistance(pd);
 					}
-					cache->APerpDistance = pd;
+
+					if ((flags & 2) != 0)
+					{
+						_g.AddEdgePerpendicularDistance(pd);
+					}
+
+					if ((flags & 4) != 0)
+					{
+						_b.AddEdgePerpendicularDistance(pd);
+					}
 				}
-				if (bdd > 0)
+				cache->APerpDistance = pd;
+			}
+
+			if (bdd > 0)
+			{
+				float pd = dist.Distance;
+				if (PerpendicularDistanceSelectorBase.GetPerpendicularDistance(ref pd, bp, bDir))
 				{
-					double pd = dist.Distance;
-					if (PerpendicularDistanceSelectorBase.GetPerpendicularDistance(ref pd, bp, bDir))
+					if ((flags & 1) != 0)
 					{
-						if (doR) _r.AddEdgePerpendicularDistance(pd);
-						if (doG) _g.AddEdgePerpendicularDistance(pd);
-						if (doB) _b.AddEdgePerpendicularDistance(pd);
+						_r.AddEdgePerpendicularDistance(pd);
 					}
-					cache->BPerpDistance = pd;
+
+					if ((flags & 2) != 0)
+					{
+						_g.AddEdgePerpendicularDistance(pd);
+					}
+
+					if ((flags & 4) != 0)
+					{
+						_b.AddEdgePerpendicularDistance(pd);
+					}
 				}
-				cache->ADomainDistance = add;
-				cache->BDomainDistance = bdd;
+				cache->BPerpDistance = pd;
 			}
 		}
 
@@ -295,9 +380,17 @@ namespace SharpMSDF.Core
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public SignedDistance TrueDistance()
 		{
-			var d = _r.TrueDistance();
-			if (_g.TrueDistance() < d) d = _g.TrueDistance();
-			if (_b.TrueDistance() < d) d = _b.TrueDistance();
+			SignedDistance d = _r.TrueDistance();
+			if (_g.TrueDistance() < d)
+			{
+				d = _g.TrueDistance();
+			}
+
+			if (_b.TrueDistance() < d)
+			{
+				d = _b.TrueDistance();
+			}
+
 			return d;
 		}
 	}

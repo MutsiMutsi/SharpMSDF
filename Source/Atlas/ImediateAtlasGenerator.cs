@@ -7,28 +7,14 @@ namespace SharpMSDF.Atlas
 {
 	public class ImmediateAtlasGenerator<T, TStorage> : AtlasGenerator
 		where T : struct
-		where TStorage : AtlasStorage, new()
+		where TStorage : AtlasStorage
 	{
 		public readonly int N;
 		public GeneratorFunction<float> GEN_FN { get; }
-		public TStorage Storage { get; private set; } = new();
+		public TStorage Storage { get; private set; }
 		public List<GlyphBox> Layout { get; } = [];
 		private GeneratorAttributes _Attributes = new GeneratorAttributes { Config = MSDFGeneratorConfig.Default };
 		private int _ThreadCount = 1;
-
-		public ImmediateAtlasGenerator(int n, GeneratorFunction<float> genFn)
-		{
-			N = n;
-			GEN_FN = genFn;
-			Storage.Init(0, 0, n); // just to store 'n'
-		}
-
-		public ImmediateAtlasGenerator(int width, int height, int n, GeneratorFunction<float> genFn)
-		{
-			N = n;
-			GEN_FN = genFn;
-			Storage.Init(width, height, n);
-		}
 
 		public ImmediateAtlasGenerator(int n, GeneratorFunction<float> genFn, TStorage storage)
 		{
@@ -37,12 +23,11 @@ namespace SharpMSDF.Atlas
 			Storage = storage;
 		}
 
-		public override void Generate(List<GlyphGeometry> glyphs)
+		public override void Generate(Span<GlyphGeometry> glyphs)
 		{
-			ReadOnlySpan<GlyphGeometry> glyphSpan = CollectionsMarshal.AsSpan(glyphs);
 			int maxBoxArea = 0;
 
-			for (int i = 0; i < glyphs.Count; ++i)
+			for (int i = 0; i < glyphs.Length; ++i)
 			{
 				GlyphBox box = glyphs[i];
 				maxBoxArea = Math.Max(maxBoxArea, box.Rect.Width * box.Rect.Height);
@@ -68,37 +53,40 @@ namespace SharpMSDF.Atlas
 				return buffer;
 			});
 
-			try
+			/*try
 			{
-				Parallel.For(0, glyphs.Count, new ParallelOptions { MaxDegreeOfParallelism = _ThreadCount },
+				Parallel.For(0, glyphs.Length, new ParallelOptions { MaxDegreeOfParallelism = _ThreadCount },
 					i =>
+			{*/
+			for (int i = 0; i < glyphs.Length; i++)
+			{
+				GlyphGeometry glyph = glyphs[i];
+				if (!glyph.IsWhitespace())
+				{
+					glyph.GetBoxRect(out int l, out int b, out int w, out int h);
+					var buffer = threadBuffers.Value!;
+					int requiredSize = w * h * BitmapView.Channels;
+
+					if (buffer.Length < requiredSize)
 					{
-						GlyphGeometry glyph = glyphs[i];
-						if (!glyph.IsWhitespace())
-						{
-							glyph.GetBoxRect(out int l, out int b, out int w, out int h);
-							var buffer = threadBuffers.Value!;
-							int requiredSize = w * h * BitmapView.Channels;
+						// Return old buffer and rent a new larger one
+						arrayPool.Return(buffer);
+						buffer = arrayPool.Rent(requiredSize);
+						rentedArrays.Add(buffer);
+						threadBuffers.Value = buffer;
+					}
 
-							if (buffer.Length < requiredSize)
-							{
-								// Return old buffer and rent a new larger one
-								arrayPool.Return(buffer);
-								buffer = arrayPool.Rent(requiredSize);
-								rentedArrays.Add(buffer);
-								threadBuffers.Value = buffer;
-							}
+					Span<float> pixelSpan = buffer.AsSpan(0, requiredSize);
+					BitmapView glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
 
-							Span<float> pixelSpan = buffer.AsSpan(0, requiredSize);
-							BitmapView glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
+					int threadNo = Thread.CurrentThread.ManagedThreadId % _ThreadCount;
 
-							int threadNo = Thread.CurrentThread.ManagedThreadId % _ThreadCount;
-
-							GEN_FN(glyphBitmapView, glyph, threadAttributes[threadNo]);
-							Storage.Put(l, b, glyphBitmapView);
-						}
-					});
+					GEN_FN(glyphBitmapView, glyph, threadAttributes[threadNo]);
+					Storage.Put(l, b, glyphBitmapView);
+				}
 			}
+			//);
+			/*}
 			finally
 			{
 				// Return all rented arrays
@@ -108,12 +96,13 @@ namespace SharpMSDF.Atlas
 				}
 
 				threadBuffers.Dispose();
-			}
+			}*/
 		}
 
 		public override void Rearrange(int width, int height, List<Remap> remapping, int count)
 		{
-			for (int i = 0; i < count; ++i)
+			throw new NotImplementedException();
+			/*for (int i = 0; i < count; ++i)
 			{
 				var glyphBox = Layout[remapping[i].Index] with { Rect = Layout[remapping[i].Index].Rect with { X = remapping[i].Target.X, Y = remapping[i].Target.Y } };
 
@@ -121,15 +110,12 @@ namespace SharpMSDF.Atlas
 			}
 
 			var oldStorage = Storage;
-			Storage = new();
-			Storage.Init(oldStorage, width, height, remapping.ToArray()[..count]);
+			Storage.Init(oldStorage, width, height, remapping.ToArray()[..count]);*/
 		}
 
 		public override void Resize(int width, int height)
 		{
-			TStorage oldStorage = Storage;
-			Storage = new();
-			Storage.Init(oldStorage, width, height);
+			Storage.Resize(width, height);
 		}
 
 		public void SetAttributes(GeneratorAttributes attributes)

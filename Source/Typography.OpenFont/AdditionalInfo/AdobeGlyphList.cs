@@ -1453,7 +1453,7 @@ bracketleftex;F8EF
 bracketleftmonospace;FF3B
 bracketlefttp;F8EE
 bracketright;005D
-bracketrightbt;F8FB
+bracketrightbt;F8FB 
 bracketrightex;F8FA
 bracketrightmonospace;FF3D
 bracketrighttp;F8F9

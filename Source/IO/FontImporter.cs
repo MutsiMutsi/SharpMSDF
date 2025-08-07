@@ -7,6 +7,7 @@ using static System.Formats.Asn1.AsnWriter;
 using NumericsVector2 = System.Numerics.Vector2;
 using static System.Net.Mime.MediaTypeNames;
 using SharpMSDF.Core;
+using System.Numerics;
 
 namespace SharpMSDF.IO
 {
@@ -21,13 +22,13 @@ namespace SharpMSDF.IO
 	public struct FontMetrics
 	{
 		/// The size of one EM.
-		public double EmSize;
+		public float EmSize;
 		/// The vertical position of the ascender and descender relative to the baseline.
-		public double AscenderY, DescenderY;
+		public float AscenderY, DescenderY;
 		/// The vertical difference between consecutive baselines.
-		public double LineHeight;
+		public float LineHeight;
 		/// The vertical position and thickness of the underline.
-		public double UnderlineY/*, UnderlineThickness*/;
+		public float UnderlineY/*, UnderlineThickness*/;
 	};
 
 	public static class FontImporter
@@ -39,16 +40,16 @@ namespace SharpMSDF.IO
 			OpenFontReader reader = new OpenFontReader();
 			return reader.Read(file);
 		}
-		public static double GetFontCoordinateScale(Typeface face, FontCoordinateScaling coordinateScaling)
+		public static float GetFontCoordinateScale(Typeface face, FontCoordinateScaling coordinateScaling)
 		{
 			switch (coordinateScaling)
 			{
 				case FontCoordinateScaling.None:
 					return 1;
 				case FontCoordinateScaling.EmNormalized:
-					return 1.0 / (face.UnitsPerEm != 0 ? face.UnitsPerEm : 1.0);
+					return 1.0f / (face.UnitsPerEm != 0f ? face.UnitsPerEm : 1.0f);
 				case FontCoordinateScaling.LegacyNormalized:
-					return 1.0 / 64.0;
+					return 1.0f / 64.0f;
 			}
 			return 1;
 		}
@@ -56,7 +57,7 @@ namespace SharpMSDF.IO
 
 		public static bool GetFontMetrics(out FontMetrics metrics, Typeface face, FontCoordinateScaling coordinateScaling)
 		{
-			double scale = GetFontCoordinateScale(face, coordinateScaling);
+			float scale = GetFontCoordinateScale(face, coordinateScaling);
 			metrics.EmSize = scale * face.UnitsPerEm;
 			metrics.AscenderY = scale * face.Ascender;
 			metrics.DescenderY = scale * face.Descender;
@@ -66,18 +67,18 @@ namespace SharpMSDF.IO
 			return true;
 		}
 
-		//public static double GetFontScale(Typeface face)
+		//public static float GetFontScale(Typeface face)
 		//{
 		//    return face.UnitsPerEm / 64.0;
 		//}
 
-		public static void GetFontWhitespaceWidth(ref double spaceAdvance, ref double tabAdvance, Typeface font)
+		public static void GetFontWhitespaceWidth(ref float spaceAdvance, ref float tabAdvance, Typeface font)
 		{
 			ushort glyphIdx;
 			glyphIdx = font.GetGlyphIndex(' ');
-			spaceAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0;
+			spaceAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0f;
 			glyphIdx = font.GetGlyphIndex('\t');
-			tabAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0;
+			tabAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0f;
 		}
 
 		/// <summary>
@@ -106,7 +107,7 @@ namespace SharpMSDF.IO
 			out float idealHeight
 			)
 		{
-			double adv = 0f;
+			float adv = 0f;
 			return LoadGlyph(typeface, unicode, scaling, out idealWidth, out idealHeight, ref adv);
 		}
 
@@ -121,10 +122,10 @@ namespace SharpMSDF.IO
 			FontCoordinateScaling scaling,
 			out float idealWidth,
 			out float idealHeight,
-			ref double advance
+			ref float advance
 			)
 		{
-			//const double scale = 1.0 / 64;
+			//const float scale = 1.0 / 64;
 			ushort glyphIndex = (ushort)typeface.GetGlyphIndex((int)unicode);
 			if (glyphIndex == 0)
 			{
@@ -140,8 +141,8 @@ namespace SharpMSDF.IO
 
 			// 1) Raw glyph bounds in face units
 			var bounds = glyph.Bounds;
-			double wUnits = bounds.XMax - bounds.XMin;
-			double hUnits = bounds.YMax - bounds.YMin;
+			float wUnits = bounds.XMax - bounds.XMin;
+			float hUnits = bounds.YMax - bounds.YMin;
 
 			// 2) Compute padded bitmap dimensions
 			idealWidth = (float)wUnits / 64f; // + padding * 2;
@@ -154,13 +155,13 @@ namespace SharpMSDF.IO
 			ushort[] ends = glyph.EndPoints;
 			int start = 0;
 
-			double scale = GetFontCoordinateScale(typeface, scaling);
+			float scale = GetFontCoordinateScale(typeface, scaling);
 			advance = advUnits * scale;
 
-			//double offsetX = bounds.XMin /*/ div*/; // + padding
-			//double offsetY = -bounds.YMin /*/ div*/; // + padding
+			//float offsetX = bounds.XMin /*/ div*/; // + padding
+			//float offsetY = -bounds.YMin /*/ div*/; // + padding
 
-			(double X, double Y) ToShapeSpace(GlyphPointF p)
+			(float X, float Y) ToShapeSpace(GlyphPointF p)
 				=> ((p.X) * scale, (p.Y) * scale);
 
 			foreach (ushort end in ends)
@@ -290,10 +291,10 @@ namespace SharpMSDF.IO
 		}
 
 
-		private static Vector2 ToVec(GlyphPointF pt, double scale) =>
+		private static Vector2 ToVec(GlyphPointF pt, float scale) =>
 			new(pt.P.X / scale, pt.P.Y / scale);
 
-		public static bool GetKerning(out double kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
+		public static bool GetKerning(out float kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
 		{
 			kerning = 0;
 			if (font.KernTable == null)

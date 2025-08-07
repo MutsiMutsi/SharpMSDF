@@ -1,5 +1,6 @@
 
 using System.ComponentModel;
+using System.Numerics;
 
 namespace SharpMSDF.Core
 {
@@ -11,21 +12,21 @@ namespace SharpMSDF.Core
 
 		private static int SymmetricalTrichotomy(int position, int n)
 		{
-			return (int)(3 + 2.875 * position / (n - 1) - 1.4375 + 0.5) - 3;
+			return (int)(3 + 2.875f * position / (n - 1) - 1.4375f + 0.5f) - 3;
 		}
 
-		private static bool IsCorner(Vector2 aDir, Vector2 bDir, double crossThreshold)
+		private static bool IsCorner(Vector2 aDir, Vector2 bDir, float crossThreshold)
 		{
-			return Vector2.Dot(aDir, bDir) <= 0 || Math.Abs(Vector2.Cross(aDir, bDir)) > crossThreshold;
+			return Vector2.Dot(aDir, bDir) <= 0 || Math.Abs(VectorExtensions.Cross(aDir, bDir)) > crossThreshold;
 		}
 
-		private static double EstimateEdgeLength(EdgeSegment edge)
+		private static float EstimateEdgeLength(EdgeSegment edge)
 		{
-			double len = 0;
+			float len = 0;
 			Vector2 prev = edge.Point(0);
 			for (int i = 1; i <= MSDFGEN_EDGE_LENGTH_PRECISION; ++i)
 			{
-				Vector2 cur = edge.Point((1.0 / MSDFGEN_EDGE_LENGTH_PRECISION) * i);
+				Vector2 cur = edge.Point((1.0f / MSDFGEN_EDGE_LENGTH_PRECISION) * i);
 				len += (cur - prev).Length();
 				prev = cur;
 			}
@@ -67,9 +68,9 @@ namespace SharpMSDF.Core
 				SwitchColor(ref color, ref seed);
 		}
 
-		public static void Simple(Shape shape, double angleThreshold, ulong seed = 0)
+		public static void Simple(Shape shape, float angleThreshold, ulong seed = 0)
 		{
-			double crossThreshold = Math.Sin(angleThreshold);
+			float crossThreshold = MathF.Sin(angleThreshold);
 			EdgeColor color = InitColor(ref seed);
 			List<int> corners = new();
 			EdgeSegment[] parts = new EdgeSegment[7];
@@ -84,7 +85,7 @@ namespace SharpMSDF.Core
 				Vector2 prevDirection = contour.Edges[^1].Direction(1);
 				for (int i = 0; i < contour.Edges.Count; i++)
 				{
-					if (IsCorner(prevDirection.Normalize(), contour.Edges[i].Direction(0).Normalize(), crossThreshold))
+					if (IsCorner(Vector2.Normalize(prevDirection), Vector2.Normalize(contour.Edges[i].Direction(0)), crossThreshold))
 						corners.Add(i);
 					prevDirection = contour.Edges[i].Direction(1);
 				}
@@ -181,14 +182,14 @@ namespace SharpMSDF.Core
 		private struct InkTrapCorner
 		{
 			public int Index;
-			public double PrevEdgeLengthEstimate;
+			public float PrevEdgeLengthEstimate;
 			public bool Minor;
 			public EdgeColor Color;
 		}
 
-		public static void InkTrap(Shape shape, double angleThreshold, ulong seed = 0)
+		public static void InkTrap(Shape shape, float angleThreshold, ulong seed = 0)
 		{
-			double crossThreshold = Math.Sin(angleThreshold);
+			float crossThreshold = MathF.Sin(angleThreshold);
 			EdgeColor color = InitColor(ref seed);
 			List<InkTrapCorner> corners = [];
 
@@ -200,14 +201,14 @@ namespace SharpMSDF.Core
 				if (contour.Edges.Count == 0)
 					continue;
 
-				double splineLength = 0;
+				float splineLength = 0;
 				corners.Clear();
 
 				Vector2 prevDirection = contour.Edges[^1].Direction(1);
 				for (int e = 0; e < contour.Edges.Count; e++)
 				{
 					var edge = contour.Edges[e];
-					if (IsCorner(prevDirection.Normalize(), edge.Direction(0).Normalize(), crossThreshold))
+					if (IsCorner(Vector2.Normalize(prevDirection), Vector2.Normalize(edge.Direction(0)), crossThreshold))
 					{
 						corners.Add(new InkTrapCorner
 						{
@@ -299,9 +300,9 @@ namespace SharpMSDF.Core
 						corners[0] = corner;
 						for (int i = 0; i < cornerCount; i++)
 						{
-							double a = corners[i].PrevEdgeLengthEstimate;
-							double b = corners[(i + 1) % cornerCount].PrevEdgeLengthEstimate;
-							double c = corners[(i + 2) % cornerCount].PrevEdgeLengthEstimate;
+							float a = corners[i].PrevEdgeLengthEstimate;
+							float b = corners[(i + 1) % cornerCount].PrevEdgeLengthEstimate;
+							float c = corners[(i + 2) % cornerCount].PrevEdgeLengthEstimate;
 
 							if (a > b && b < c)
 							{

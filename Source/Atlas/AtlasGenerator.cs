@@ -18,7 +18,7 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Generates bitmap representation for the supplied array of glyphs.
 		/// </summary>
-		public abstract void Generate(List<GlyphGeometry> glyphs);
+		public abstract void Generate(Span<GlyphGeometry> glyphs);
 
 		/// <summary>
 		/// Resizes the atlas and rearranges the generated pixels according to the remapping array.

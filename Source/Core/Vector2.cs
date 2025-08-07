@@ -1,14 +1,40 @@
 using System;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.Core
 {
-    /**
+	public static class VectorExtensions
+	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector2 GetOrthonormal(this Vector2 v, bool polarity = true, bool allowZero = false)
+		{
+			float len = v.Length();
+			if (len != 0)
+				return polarity ? new(-v.Y / len, v.X / len) : new(v.Y / len, -v.X / len);
+			return polarity ? new(0, allowZero ? 0 : 1) : new(0, -(allowZero ? 0 : 1));
+		}
+
+		/// Returns a vector with the same length that is orthogonal to this one.
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Vector2 GetOrthogonal(this Vector2 v, bool polarity = true)
+		{
+			return polarity ? new(-v.Y, v.X) : new(v.Y, -v.X);
+		}
+
+		/// A special version of the cross product for 2D vectors (returns scalar value).
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static float Cross(Vector2 a, Vector2 b)
+		{
+			return a.X * b.Y - a.Y * b.X;
+		}
+	}
+	/**
      * A 2-dimensional euclidean vector with double precision.
      * Implementation based on the Vector2 template from Artery Engine.
      * @author Viktor Chlumsky
      */
-    public struct Vector2 : IEquatable<Vector2>
+	/*public struct Vector2 : IEquatable<Vector2>
     {
         public double X, Y;
 
@@ -172,5 +198,5 @@ namespace SharpMSDF.Core
         {
             return new Vector2(value / vector.X, value / vector.Y);
         }
-    }
+    }*/
 }
