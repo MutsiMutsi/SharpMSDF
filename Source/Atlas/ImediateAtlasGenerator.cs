@@ -24,7 +24,6 @@ namespace SharpMSDF.Atlas
 			Storage = storage;
 		}
 
-
 		public override void Generate(List<Shape> shapes, List<GlyphGeometry> glyphs)
 		{
 			int maxBoxArea = 0;
@@ -36,6 +35,8 @@ namespace SharpMSDF.Atlas
 				Layout.Add(box);
 			}
 
+			Span<float> pixelSpan = stackalloc float[maxBoxArea * BitmapView.Channels];
+
 			for (int i = 0; i < glyphs.Count; i++)
 			{
 				if (!glyphs[i].IsWhitespace)
@@ -43,8 +44,7 @@ namespace SharpMSDF.Atlas
 					glyphs[i].GetBoxRect(out int l, out int b, out int w, out int h);
 					int requiredSize = w * h * BitmapView.Channels;
 
-					Span<float> pixelSpan = stackalloc float[requiredSize];
-					var glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
+					var glyphBitmapView = new BitmapView(pixelSpan[..requiredSize], w, h, 0, 0, w, h);
 					GEN_FN(shapes[i], glyphBitmapView, glyphs[i], _Attributes);
 					Storage.Put(l, b, glyphBitmapView);
 				}

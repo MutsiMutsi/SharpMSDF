@@ -99,7 +99,6 @@ namespace SharpMSDF.IO
 			var bounds = glyph.Bounds;
 			Shape shape = ShapePool.Rent();
 
-			GlyphPointF[] pts = glyph.GlyphPoints;
 			ushort[] ends = glyph.EndPoints;
 			int start = 0;
 
@@ -114,7 +113,7 @@ namespace SharpMSDF.IO
 				int count = end - start + 1;
 				if (count <= 0) { start = end + 1; continue; }
 
-				ReadOnlySpan<GlyphPointF> contourPts = new ReadOnlySpan<GlyphPointF>(pts, start, count);
+				ReadOnlySpan<GlyphPointF> contourPts = new ReadOnlySpan<GlyphPointF>(glyph.GlyphPoints, start, count);
 
 				shape.StartContour();
 
