@@ -82,29 +82,23 @@ namespace SharpMSDF.IO
 		}
 
 		public static Shape LoadGlyph(
-			Typeface typeface,
-			uint unicode,
-			FontCoordinateScaling scaling
-			)
+	Typeface typeface,
+	uint unicode,
+	FontCoordinateScaling scaling
+)
 		{
-			//const float scale = 1.0 / 64;
 			ushort glyphIndex = (ushort)typeface.GetGlyphIndex((int)unicode);
 			if (glyphIndex == 0)
 			{
 				return null;
 			}
-			var glyph = typeface.GetGlyph(glyphIndex);
 
+			var glyph = typeface.GetGlyph(glyphIndex);
 			int advUnits = typeface.GetAdvanceWidthFromGlyphIndex(glyphIndex);
 
-			//const int padding = 0;      // pixels
-
-			// 1) Raw glyph bounds in face units
 			var bounds = glyph.Bounds;
-			float wUnits = bounds.XMax - bounds.XMin;
-			float hUnits = bounds.YMax - bounds.YMin;
-
 			Shape shape = ShapePool.Rent();
+
 			GlyphPointF[] pts = glyph.GlyphPoints;
 			ushort[] ends = glyph.EndPoints;
 			int start = 0;
@@ -112,19 +106,15 @@ namespace SharpMSDF.IO
 			float scale = GetFontCoordinateScale(typeface, scaling);
 			shape.Advance = advUnits * scale;
 
-			//float offsetX = bounds.XMin /*/ div*/; // + padding
-			//float offsetY = -bounds.YMin /*/ div*/; // + padding
-
 			(float X, float Y) ToShapeSpace(GlyphPointF p)
-				=> ((p.X) * scale, (p.Y) * scale);
+				=> (p.X * scale, p.Y * scale);
 
 			foreach (ushort end in ends)
 			{
 				int count = end - start + 1;
 				if (count <= 0) { start = end + 1; continue; }
-				var contourPts = new List<GlyphPointF>(count);
-				for (int i = start; i <= end; i++)
-					contourPts.Add(pts[i]);
+
+				ReadOnlySpan<GlyphPointF> contourPts = new ReadOnlySpan<GlyphPointF>(pts, start, count);
 
 				shape.StartContour();
 
@@ -140,7 +130,7 @@ namespace SharpMSDF.IO
 				GlyphPointF? pendingOff = null;
 				int idx0 = firstOff ? 0 : 1;
 
-				for (int i = idx0; i < contourPts.Count; i++)
+				for (int i = idx0; i < contourPts.Length; i++)
 				{
 					var pt = contourPts[i];
 					if (pt.onCurve)
@@ -151,12 +141,11 @@ namespace SharpMSDF.IO
 							var c1 = ToShapeSpace(pendingOff.Value);
 							var c2 = ToShapeSpace(pt);
 
-
 							shape.AddEdge(new EdgeSegment(
 								new QuadraticSegment(
-									new Vector2((float)c0.X, (float)c0.Y),
-									new Vector2((float)c1.X, (float)c1.Y),
-									new Vector2((float)c2.X, (float)c2.Y)
+									new Vector2(c0.X, c0.Y),
+									new Vector2(c1.X, c1.Y),
+									new Vector2(c2.X, c2.Y)
 								)
 							));
 							pendingOff = null;
@@ -168,8 +157,8 @@ namespace SharpMSDF.IO
 							var c1 = ToShapeSpace(pt);
 							shape.AddEdge(new EdgeSegment(
 								new LinearSegment(
-								new Vector2((float)c0.X, (float)c0.Y),
-								new Vector2((float)c1.X, (float)c1.Y)
+									new Vector2(c0.X, c0.Y),
+									new Vector2(c1.X, c1.Y)
 								)
 							));
 							currentOn = pt;
@@ -195,9 +184,9 @@ namespace SharpMSDF.IO
 
 							shape.AddEdge(new EdgeSegment(
 								new QuadraticSegment(
-								new Vector2((float)c0.X, (float)c0.Y),
-								new Vector2((float)c1.X, (float)c1.Y),
-								new Vector2((float)c2.X, (float)c2.Y)
+									new Vector2(c0.X, c0.Y),
+									new Vector2(c1.X, c1.Y),
+									new Vector2(c2.X, c2.Y)
 								)
 							));
 
@@ -207,19 +196,18 @@ namespace SharpMSDF.IO
 					}
 				}
 
-				// Close
+				// Close contour
 				if (pendingOff.HasValue)
 				{
 					var c0 = ToShapeSpace(currentOn);
 					var c1 = ToShapeSpace(pendingOff.Value);
 					var c2 = ToShapeSpace(firstPt);
 
-
 					shape.AddEdge(new EdgeSegment(
 						new QuadraticSegment(
-						new Vector2((float)c0.X, (float)c0.Y),
-						new Vector2((float)c1.X, (float)c1.Y),
-						new Vector2((float)c2.X, (float)c2.Y)
+							new Vector2(c0.X, c0.Y),
+							new Vector2(c1.X, c1.Y),
+							new Vector2(c2.X, c2.Y)
 						)
 					));
 				}
@@ -229,13 +217,13 @@ namespace SharpMSDF.IO
 					var c1 = ToShapeSpace(firstPt);
 
 					shape.AddEdge(new EdgeSegment(
-					new LinearSegment(
-						new Vector2((float)c0.X, (float)c0.Y),
-						new Vector2((float)c1.X, (float)c1.Y)
+						new LinearSegment(
+							new Vector2(c0.X, c0.Y),
+							new Vector2(c1.X, c1.Y)
 						)
 					));
-
 				}
+
 				start = end + 1;
 			}
 
