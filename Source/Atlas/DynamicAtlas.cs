@@ -52,17 +52,17 @@ namespace SharpMSDF.Atlas
             return 0;
         }
 
-		public ChangeFlag Add(Span<GlyphGeometry> glyphs, bool allowRearrange = false)
+		public ChangeFlag Add(List<Shape> shapes, List<GlyphGeometry> glyphs, bool allowRearrange = false)
 		{
 			ChangeFlag changeFlags = 0;
 			int start = _Rectangles.Count;
 			int originalGlyphCount = _GlyphCount;
 
-			var remapBuffer = new List<Remap>(glyphs.Length);
+			var remapBuffer = new List<Remap>(glyphs.Count);
 
-			for (int i = 0; i < glyphs.Length; ++i)
+			for (int i = 0; i < glyphs.Count; ++i)
 			{
-				if (!glyphs[i].IsWhitespace())
+				if (!glyphs[i].IsWhitespace)
 				{
 					glyphs[i].GetBoxSize(out int w, out int h);
 					_Rectangles.Add(new AtlasRectangle(0, 0, w + _Spacing, h + _Spacing));
@@ -125,10 +125,10 @@ namespace SharpMSDF.Atlas
 					glyphs[i] = glyphs[i].PlaceBox(_Rectangles[rectIdx].X, _Rectangles[rectIdx].Y);
 				}
 
-				Generator.Generate(glyphs); // only uses current batch
+				Generator.Generate(shapes, glyphs); // only uses current batch
 			}
 
-			_GlyphCount += glyphs.Length;
+			_GlyphCount += glyphs.Count;
 			return changeFlags;
 		}
 

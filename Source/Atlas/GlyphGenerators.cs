@@ -5,11 +5,9 @@ namespace SharpMSDF.Atlas
 	public static class GlyphGenerators
 	{
 
-		public static void Msdf(BitmapView output, GlyphGeometry glyph, GeneratorAttributes attribs)
+		public static void Msdf(Shape shape, BitmapView output, GlyphGeometry glyph, GeneratorAttributes attribs)
 		{
 
-			// Calculate required memory size
-			var shape = glyph.GetShape();
 			int requiredMemory = MSDFGen.GetRequiredWorkingMemorySize(shape);
 			Span<byte> workingMemory = stackalloc byte[requiredMemory]; // Or rent from ArrayPool
 

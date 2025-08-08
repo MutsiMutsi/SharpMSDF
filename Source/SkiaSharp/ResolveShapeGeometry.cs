@@ -12,7 +12,7 @@ namespace SharpMSDF.SkiaSharp
 
 		public static SKPoint PointToSkiaPoint(Vector2 p)
 		{
-			return new SKPoint((float)p.X, (float)p.Y);
+			return new SKPoint(p.X, p.Y);
 		}
 
 		public static Vector2 PointFromSkiaPoint(SKPoint p)
@@ -22,19 +22,18 @@ namespace SharpMSDF.SkiaSharp
 
 		public static void ShapeToSkiaPath(SKPath skPath, Shape shape)
 		{
-			foreach (var contour in shape.Contours)
+			foreach (Shape.ContourRange contour in shape.Contours)
 			{
 				if (contour.Count > 0)
 				{
-					var edge = shape.Edges[contour.Start + contour.Count - 1];
-					var controlPoints = edge.ControlPoints();
+					EdgeSegment edge = shape.Edges[contour.Start + contour.Count - 1];
+					ReadOnlySpan<Vector2> controlPoints = edge.ControlPoints();
 					skPath.MoveTo(PointToSkiaPoint(controlPoints[0]));
 
-					var contourEdges = shape.Edges.GetRange(contour.Start, contour.Count);
-
-					foreach (var nextEdge in contourEdges)
+					for (int i = contour.Start; i < contour.Start + contour.Count; i++)
 					{
-						var p = edge.ControlPoints();
+						var nextEdge = shape.Edges[i];
+						ReadOnlySpan<Vector2> p = edge.ControlPoints();
 						switch (edge.Type)
 						{
 							case EdgeSegmentType.Linear:
@@ -49,87 +48,89 @@ namespace SharpMSDF.SkiaSharp
 						}
 						edge = nextEdge;
 					}
+
+
 				}
 			}
 		}
 
 		public static void ShapeFromSkiaPath(ref Shape shape, SKPath skPath)
 		{
-			shape = new Shape();
+			shape.Reset();
+			using SKPath.Iterator pathIterator = skPath.CreateIterator(true);
+			SKPoint[] edgePoints = new SKPoint[4];
+			SKPathVerb verb;
 
-			using (var pathIterator = skPath.CreateIterator(true))
+			while ((verb = pathIterator.Next(edgePoints)) != SKPathVerb.Done)
 			{
-				var edgePoints = new SKPoint[4];
-				SKPathVerb verb;
-
-				while ((verb = pathIterator.Next(edgePoints)) != SKPathVerb.Done)
+				switch (verb)
 				{
-					switch (verb)
-					{
-						case SKPathVerb.Move:
-							if (shape.CurrentContourIdx == -1 || shape.Contours[shape.CurrentContourIdx].Count > 0)
-								shape.StartContour();
-							break;
+					case SKPathVerb.Move:
+						if (shape.CurrentContourIdx == -1 || shape.Contours[shape.CurrentContourIdx].Count > 0)
+						{
+							shape.StartContour();
+						}
 
-						case SKPathVerb.Line:
+						break;
 
-							shape.AddEdge(new EdgeSegment(
-								new LinearSegment(
-									PointFromSkiaPoint(edgePoints[0]),
-									PointFromSkiaPoint(edgePoints[1])
-								)
-							));
-							break;
+					case SKPathVerb.Line:
 
-						case SKPathVerb.Quad:
+						shape.AddEdge(new EdgeSegment(
+							new LinearSegment(
+								PointFromSkiaPoint(edgePoints[0]),
+								PointFromSkiaPoint(edgePoints[1])
+							)
+						));
+						break;
 
-							shape.AddEdge(new EdgeSegment(
-								new QuadraticSegment(
-									PointFromSkiaPoint(edgePoints[0]),
-									PointFromSkiaPoint(edgePoints[1]),
-									PointFromSkiaPoint(edgePoints[2])
-								)
-							));
+					case SKPathVerb.Quad:
 
-							break;
+						shape.AddEdge(new EdgeSegment(
+							new QuadraticSegment(
+								PointFromSkiaPoint(edgePoints[0]),
+								PointFromSkiaPoint(edgePoints[1]),
+								PointFromSkiaPoint(edgePoints[2])
+							)
+						));
 
-						/*case SKPathVerb.Cubic:
-							contour.AddEdge(new EdgeSegment(
-								new CubicSegment(
-									PointFromSkiaPoint(edgePoints[0]),
-									PointFromSkiaPoint(edgePoints[1]),
-									PointFromSkiaPoint(edgePoints[2]),
-									PointFromSkiaPoint(edgePoints[3])
-								)
-							));
+						break;
 
-							break;
-							*/
-						case SKPathVerb.Conic:
-							// Convert conic to quadratic curves
-							var quadPoints = new SKPoint[5];
-							var weight = pathIterator.ConicWeight();
+					/*case SKPathVerb.Cubic:
+						contour.AddEdge(new EdgeSegment(
+							new CubicSegment(
+								PointFromSkiaPoint(edgePoints[0]),
+								PointFromSkiaPoint(edgePoints[1]),
+								PointFromSkiaPoint(edgePoints[2]),
+								PointFromSkiaPoint(edgePoints[3])
+							)
+						));
 
-							// SkiaSharp doesn't have ConvertConicToQuads, so we need to implement it
-							// or use an approximation. For now, we'll convert to a single quad as approximation
-							var mid = new SKPoint(
-								(edgePoints[0].X + 2 * edgePoints[1].X + edgePoints[2].X) / 4,
-								(edgePoints[0].Y + 2 * edgePoints[1].Y + edgePoints[2].Y) / 4
-							);
+						break;
+						*/
+					case SKPathVerb.Conic:
+						// Convert conic to quadratic curves
+						_ = new SKPoint[5];
+						_ = pathIterator.ConicWeight();
 
-							shape.AddEdge(new EdgeSegment(
-								new QuadraticSegment(
-									PointFromSkiaPoint(edgePoints[0]),
-									PointFromSkiaPoint(mid),
-									PointFromSkiaPoint(edgePoints[2])
-								)
-							));
-							break;
+						// SkiaSharp doesn't have ConvertConicToQuads, so we need to implement it
+						// or use an approximation. For now, we'll convert to a single quad as approximation
+						SKPoint mid = new(
+							(edgePoints[0].X + (2 * edgePoints[1].X) + edgePoints[2].X) / 4,
+							(edgePoints[0].Y + (2 * edgePoints[1].Y) + edgePoints[2].Y) / 4
+						);
 
-						case SKPathVerb.Close:
-						case SKPathVerb.Done:
-							break;
-					}
+						shape.AddEdge(new EdgeSegment(
+							new QuadraticSegment(
+								PointFromSkiaPoint(edgePoints[0]),
+								PointFromSkiaPoint(mid),
+								PointFromSkiaPoint(edgePoints[2])
+							)
+						));
+						break;
+
+					case SKPathVerb.Close:
+					case SKPathVerb.Done:
+						break;
 				}
 			}
 
@@ -142,16 +143,16 @@ namespace SharpMSDF.SkiaSharp
 			int n = 0;
 			for (int i = 0; i < shape.Contours.Count; ++i)
 			{
-				var contourEdges = shape.GetContourEdges(i);
+				ReadOnlySpan<EdgeSegment> contourEdges = shape.GetContourEdges(i);
 
-				var contour = shape.Contours[i];
+				Shape.ContourRange contour = shape.Contours[i];
 				if (contourEdges.Length == 4 &&
 					contourEdges[0].Type == EdgeSegmentType.Linear &&
 					contourEdges[1].Type == EdgeSegmentType.Linear &&
 					contourEdges[2].Type == EdgeSegmentType.Linear &&
 					contourEdges[3].Type == EdgeSegmentType.Linear)
 				{
-					var sum = Sign(CrossProduct(contourEdges[0].Direction(1), contourEdges[1].Direction(0))) +
+					int sum = Sign(CrossProduct(contourEdges[0].Direction(1), contourEdges[1].Direction(0))) +
 							  Sign(CrossProduct(contourEdges[1].Direction(1), contourEdges[2].Direction(0))) +
 							  Sign(CrossProduct(contourEdges[2].Direction(1), contourEdges[3].Direction(0))) +
 							  Sign(CrossProduct(contourEdges[3].Direction(1), contourEdges[0].Direction(0)));
@@ -188,35 +189,36 @@ namespace SharpMSDF.SkiaSharp
 
 		public static bool Resolve(ref Shape shape)
 		{
-			using (var skPath = new SKPath())
-			{
-				shape.Normalize();
-				ShapeToSkiaPath(skPath, shape);
+			using SKPath skPath = new();
+			shape.Normalize();
+			ShapeToSkiaPath(skPath, shape);
 
-				using (var simplifiedPath = skPath.Simplify())
-				{
-					if (simplifiedPath == null)
-						return false;
-					// Note: Skia's AsWinding doesn't seem to work for unknown reasons (from original comment)
-					ShapeFromSkiaPath(ref shape, simplifiedPath);
-					// In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
-					// which are not valid geometry, so they must be removed.
-					//PruneCrossedQuadrilaterals(shape);
-					shape.OrientContours();
-					return true;
-				}
+			using SKPath simplifiedPath = skPath.Simplify();
+			if (simplifiedPath == null)
+			{
+				return false;
 			}
+			// Note: Skia's AsWinding doesn't seem to work for unknown reasons (from original comment)
+			ShapeFromSkiaPath(ref shape, simplifiedPath);
+			// In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
+			// which are not valid geometry, so they must be removed.
+			//PruneCrossedQuadrilaterals(shape);
+			shape.OrientContours();
+			return true;
 		}
 		private static int Sign(float value)
 		{
-			if (value > 0) return 1;
-			if (value < 0) return -1;
-			return 0;
+			if (value > 0)
+			{
+				return 1;
+			}
+
+			return value < 0 ? -1 : 0;
 		}
 
 		private static float CrossProduct(Vector2 a, Vector2 b)
 		{
-			return a.X * b.Y - a.Y * b.X;
+			return (a.X * b.Y) - (a.Y * b.X);
 		}
 	}
 }

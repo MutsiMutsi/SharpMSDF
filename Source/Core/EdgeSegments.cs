@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace SharpMSDF.Core
 {
@@ -84,7 +85,7 @@ namespace SharpMSDF.Core
 				case EdgeSegmentType.Quadratic:
 					quadratic.Bound(ref l, ref b, ref r, ref t);
 					break;
-				//case EdgeSegmentType.Cubic:
+					//case EdgeSegmentType.Cubic:
 					//cubic.Bound(ref l, ref b, ref r, ref t);
 					//break;
 			}
@@ -101,8 +102,8 @@ namespace SharpMSDF.Core
 					quadratic.SplitInThirds(out part0, out part1, out part2, Color);
 					break;
 				//case EdgeSegmentType.Cubic:
-					//cubic.SplitInThirds(out part0, out part1, out part2, Color);
-					//break;
+				//cubic.SplitInThirds(out part0, out part1, out part2, Color);
+				//break;
 				default:
 					throw new InvalidOperationException();
 			}
@@ -128,23 +129,25 @@ namespace SharpMSDF.Core
 				case EdgeSegmentType.Quadratic:
 					return quadratic.DirectionChange(param);
 				//case EdgeSegmentType.Cubic:
-					//return cubic.DirectionChange(param);
+				//return cubic.DirectionChange(param);
 				default:
 					throw new InvalidOperationException();
 			}
 		}
 
-		public Vector2[] ControlPoints()
+		public unsafe ReadOnlySpan<Vector2> ControlPoints()
 		{
-			//TODO: Make these spans!??
 			switch (Type)
 			{
 				case EdgeSegmentType.Linear:
-					return [linear.P0, linear.P1];
+					return MemoryMarshal.CreateReadOnlySpan(in linear.P0, 2);
+
 				case EdgeSegmentType.Quadratic:
-					return [quadratic.P0, quadratic.P1, quadratic.P2];
-				//case EdgeSegmentType.Cubic:
-					//return [cubic.P0, cubic.P1, cubic.P2, cubic.P3];
+					return MemoryMarshal.CreateReadOnlySpan(in quadratic.P0, 3);
+
+				// case EdgeSegmentType.Cubic:
+				//     return MemoryMarshal.CreateReadOnlySpan(ref cubic.P0, 4);
+
 				default:
 					throw new InvalidOperationException();
 			}

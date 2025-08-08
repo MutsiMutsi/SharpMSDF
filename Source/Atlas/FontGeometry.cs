@@ -77,7 +77,7 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Loads all glyphs in a charset (Charset elements are Unicode codepoints), returns the number of successfully loaded glyphs
 		/// </summary>
-		public int LoadCharset(Typeface face, float fontScale, ReadOnlySpan<char> charset, Span<GlyphGeometry> glyphSpan, bool preprocessGeometry = true, bool enableKerning = true)
+		public int LoadCharset(List<Shape> shapes, Typeface face, float fontScale, ReadOnlySpan<char> charset, List<GlyphGeometry> glyphSpan, bool preprocessGeometry = true, bool enableKerning = true)
 		{
 			LoadMetrics(face, fontScale);
 
@@ -86,7 +86,7 @@ namespace SharpMSDF.Atlas
 			for (int i = 0; i < charset.Length; i++)
 			{
 				var glyph = new GlyphGeometry();
-				if (glyph.Load(face, geometryScale, charset[i], preprocessGeometry))
+				if (glyph.Load(shapes[i], face, geometryScale, charset[i], preprocessGeometry))
 				{
 					glyphSpan[loaded] = glyph;
 					++loaded;
@@ -126,7 +126,7 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Loads kerning pairs for all glyphs that are currently present, returns the number of loaded kerning pairs
 		/// </summary>
-		public int LoadKerning(Span<GlyphGeometry> glyphs, Typeface font)
+		public int LoadKerning(List<GlyphGeometry> glyphs, Typeface font)
 		{
 			int loaded = 0;
 

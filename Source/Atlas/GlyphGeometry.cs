@@ -6,12 +6,6 @@ using Typography.OpenFont;
 
 namespace SharpMSDF.Atlas
 {
-	public static class ShapeStore
-	{
-		public static Dictionary<uint, Shape> Shapes = new Dictionary<uint, Shape>();
-	}
-
-
 	public struct GlyphAttributes
 	{
 		public float Scale;
@@ -30,8 +24,9 @@ namespace SharpMSDF.Atlas
 		public Padding OuterPadding;
 	}
 
-	public struct GlyphGeometry
+	public class GlyphGeometry
 	{
+		public bool IsWhitespace;
 		private uint _codepoint;
 		private float _geometryScale;
 		private Shape.Bounds _bounds;
@@ -41,39 +36,38 @@ namespace SharpMSDF.Atlas
 
 		public GlyphGeometry() { }
 
-		public bool Load(Typeface font, float geometryScale, uint codepoint, bool preprocessGeometry = true)
+		public bool Load(Shape shape, Typeface font, float geometryScale, uint codepoint, bool preprocessGeometry = true)
 		{
-			if (font == null)
+			if (shape == null)
+			{
 				return false;
-
-			var _shape = FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out _, out _, ref _advance);
-
-			if (_shape.Validate())
+			}
+			if (shape.Validate())
 			{
 				_index = font.GetGlyphIndex((int)codepoint);
 				_geometryScale = geometryScale;
 				_codepoint = codepoint;
-				_advance *= geometryScale;
+				_advance = shape.Advance * geometryScale;
 
-				ResolveShapeGeometry.Resolve(ref _shape);
+				ResolveShapeGeometry.Resolve(ref shape);
 
 				//TODO: it seems we already normalize in skia, do we need to do it again!??
-				//_shape.Normalize();
-				_bounds = _shape.GetBounds();
+				//shape.Normalize();
+				_bounds = shape.GetBounds();
 
-				ShapeStore.Shapes.Add(codepoint, _shape);
+				IsWhitespace = shape.ContourCount == 0;
 
 				return true;
 			}
 			return false;
 		}
 
-		public void EdgeColoring(Action<Shape, float, ulong> coloringFunc, float angleThreshold, ulong seed)
+		public void EdgeColoring(Shape shape, Action<Shape, float, ulong> coloringFunc, float angleThreshold, ulong seed)
 		{
-			coloringFunc?.Invoke(ShapeStore.Shapes[_codepoint], angleThreshold, seed);
+			coloringFunc?.Invoke(shape, angleThreshold, seed);
 		}
 
-		public void WrapBox(GlyphAttributes glyphAttributes)
+		public void WrapBox(Shape shape, GlyphAttributes glyphAttributes)
 		{
 			float scale = glyphAttributes.Scale * _geometryScale;
 			DoubleRange range = glyphAttributes.Range / _geometryScale;
@@ -90,7 +84,7 @@ namespace SharpMSDF.Atlas
 				float t = _bounds.t - range.Lower;
 
 				if (glyphAttributes.MiterLimit > 0)
-					ShapeStore.Shapes[_codepoint].BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
+					shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
 
 				l -= fullPadding.L; b -= fullPadding.B;
 				r += fullPadding.R; t += fullPadding.T;
@@ -133,7 +127,7 @@ namespace SharpMSDF.Atlas
 			}
 		}
 
-		public void FrameBox(in GlyphAttributes glyphAttributes, int width, int height, float? fixedX, float? fixedY)
+		public void FrameBox(Shape shape, in GlyphAttributes glyphAttributes, int width, int height, float? fixedX, float? fixedY)
 		{
 			float scale = glyphAttributes.Scale * _geometryScale;
 			DoubleRange range = glyphAttributes.Range / _geometryScale;
@@ -157,7 +151,7 @@ namespace SharpMSDF.Atlas
 				float t = _bounds.t - range.Lower;
 
 				if (glyphAttributes.MiterLimit > 0)
-					ShapeStore.Shapes[_codepoint].BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
+					shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
 
 				l -= fullPadding.L; b -= fullPadding.B;
 				r += fullPadding.R; t += fullPadding.T;
@@ -194,9 +188,9 @@ namespace SharpMSDF.Atlas
 			_box.OuterPadding = glyphAttributes.Scale * glyphAttributes.OuterPadding;
 		}
 
-		public void FrameBox(float scale, float range, float miterLimit, int width, int height, float? fixedX, float? fixedY, bool pxAlignOrigin)
+		public void FrameBox(Shape shape, float scale, float range, float miterLimit, int width, int height, float? fixedX, float? fixedY, bool pxAlignOrigin)
 		{
-			FrameBox(new GlyphAttributes
+			FrameBox(shape, new GlyphAttributes
 			{
 				Scale = scale,
 				Range = new DoubleRange(range),
@@ -206,9 +200,9 @@ namespace SharpMSDF.Atlas
 			}, width, height, fixedX, fixedY);
 		}
 
-		public void FrameBox(float scale, float range, float miterLimit, int width, int height, float? fixedX, float? fixedY, bool pxAlignOriginX, bool pxAlignOriginY)
+		public void FrameBox(Shape shape, float scale, float range, float miterLimit, int width, int height, float? fixedX, float? fixedY, bool pxAlignOriginX, bool pxAlignOriginY)
 		{
-			FrameBox(new GlyphAttributes
+			FrameBox(shape, new GlyphAttributes
 			{
 				Scale = scale,
 				Range = new DoubleRange(range),
@@ -231,9 +225,9 @@ namespace SharpMSDF.Atlas
 			return this;
 		}
 
-		public readonly ushort GetIndex => _index;
-		public readonly ushort GetGlyphIndex => _index;
-		public readonly uint GetCodepoint => _codepoint;
+		public ushort GetIndex => _index;
+		public ushort GetGlyphIndex => _index;
+		public uint GetCodepoint => _codepoint;
 
 		//public int GetIdentifier(GlyphIdentifierType type)
 		//{
@@ -296,9 +290,16 @@ namespace SharpMSDF.Atlas
 				l = b = r = t = 0;
 		}
 
-		public bool IsWhitespace() => ShapeStore.Shapes[_codepoint].Contours.Count == 0;
-
-		public Shape GetShape() => ShapeStore.Shapes[_codepoint];
+		internal void Reset()
+		{
+			/*public bool IsWhitespace;
+			private uint _codepoint;
+			private float _geometryScale;
+			private Shape.Bounds _bounds;
+			private float _advance;
+			private ushort _index;
+			private BoxData _box;*/
+		}
 
 		public static implicit operator GlyphBox(GlyphGeometry geometry)
 		{

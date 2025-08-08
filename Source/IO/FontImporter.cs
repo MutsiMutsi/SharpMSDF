@@ -81,57 +81,17 @@ namespace SharpMSDF.IO
 			tabAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0f;
 		}
 
-		/// <summary>
-		/// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
-		/// returning its advance (in the same 1/64 units) and the ideal
-		/// Only TrueType outlines (glyf table) are supported.
-		/// </summary>
 		public static Shape LoadGlyph(
 			Typeface typeface,
 			uint unicode,
-			FontCoordinateScaling scaling)
-		{
-			return LoadGlyph(typeface, unicode, scaling, out _, out _);
-		}
-
-		/// <summary>
-		/// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
-		/// returning its advance (in the same 1/64 units) and the ideal
-		/// Only TrueType outlines (glyf table) are supported.
-		/// </summary>
-		public static Shape LoadGlyph(
-			Typeface typeface,
-			uint unicode,
-			FontCoordinateScaling scaling,
-			out float idealWidth,
-			out float idealHeight
-			)
-		{
-			float adv = 0f;
-			return LoadGlyph(typeface, unicode, scaling, out idealWidth, out idealHeight, ref adv);
-		}
-
-		/// <summary>
-		/// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
-		/// returning its advance (in the same 1/64 units) and the ideal
-		/// Only TrueType outlines (glyf table) are supported.
-		/// </summary>
-		public static Shape LoadGlyph(
-			Typeface typeface,
-			uint unicode,
-			FontCoordinateScaling scaling,
-			out float idealWidth,
-			out float idealHeight,
-			ref float advance
+			FontCoordinateScaling scaling
 			)
 		{
 			//const float scale = 1.0 / 64;
 			ushort glyphIndex = (ushort)typeface.GetGlyphIndex((int)unicode);
 			if (glyphIndex == 0)
 			{
-				advance = 0;
-				idealWidth = idealHeight = 0;
-				return new Shape();
+				return null;
 			}
 			var glyph = typeface.GetGlyph(glyphIndex);
 
@@ -144,19 +104,13 @@ namespace SharpMSDF.IO
 			float wUnits = bounds.XMax - bounds.XMin;
 			float hUnits = bounds.YMax - bounds.YMin;
 
-			// 2) Compute padded bitmap dimensions
-			idealWidth = (float)wUnits / 64f; // + padding * 2;
-			idealHeight = (float)hUnits / 64f; // + padding * 2;
-
-			// 3) Compute offset so that glyph’s bottom‐left maps to (padding, padding)
-
-			Shape shape = new Shape();
+			Shape shape = ShapePool.Rent();
 			GlyphPointF[] pts = glyph.GlyphPoints;
 			ushort[] ends = glyph.EndPoints;
 			int start = 0;
 
 			float scale = GetFontCoordinateScale(typeface, scaling);
-			advance = advUnits * scale;
+			shape.Advance = advUnits * scale;
 
 			//float offsetX = bounds.XMin /*/ div*/; // + padding
 			//float offsetY = -bounds.YMin /*/ div*/; // + padding

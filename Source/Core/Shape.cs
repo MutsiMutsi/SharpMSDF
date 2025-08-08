@@ -1,9 +1,12 @@
+using SharpMSDF.Atlas;
 using SharpMSDF.Core;
+using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-public struct Shape
+public class Shape
 {
+	public float Advance = 0f;
 	public const float MSDFGEN_CORNER_DOT_EPSILON = .000001f;
 
 	public struct Bounds
@@ -29,8 +32,8 @@ public struct Shape
 
 	public Shape()
 	{
-		Edges = new List<EdgeSegment>();
-		Contours = new List<ContourRange>();
+		Edges = new List<EdgeSegment>(128);
+		Contours = new List<ContourRange>(32);
 		InverseYAxis = false;
 		_currentContourIndex = -1;
 	}
@@ -343,5 +346,125 @@ public struct Shape
 		public float X;
 		public int Direction;
 		public int ContourIndex;
+	}
+
+	public void Reset()
+	{
+		Advance = 0f;
+		Edges.Clear();
+		Contours.Clear();
+		InverseYAxis = false;
+		_currentContourIndex = -1;
+	}
+}
+
+public static class ShapePool
+{
+	private static readonly ConcurrentQueue<Shape> _pool = new();
+	private static int _poolCount = 0;
+	private const int MaxPoolSize = 100; // Prevent unbounded growth
+
+	/// <summary>
+	/// Gets a Shape from the pool, or creates a new one if pool is empty
+	/// </summary>
+	public static Shape Rent()
+	{
+		if (_pool.TryDequeue(out Shape? shape))
+		{
+			Interlocked.Decrement(ref _poolCount);
+			return shape;
+		}
+
+		return new Shape();
+	}
+
+	/// <summary>
+	/// Returns a Shape to the pool after clearing its contents
+	/// </summary>
+	public static void Return(Shape shape)
+	{
+		if (shape == null)
+			return;
+
+		shape.Reset();
+
+		// Only return to pool if we haven't exceeded max size
+		if (_poolCount < MaxPoolSize)
+		{
+			_pool.Enqueue(shape);
+			Interlocked.Increment(ref _poolCount);
+		}
+	}
+
+	/// <summary>
+	/// Gets current pool size (approximate due to threading)
+	/// </summary>
+	public static int PoolSize => _poolCount;
+
+	/// <summary>
+	/// Clears all objects from the pool
+	/// </summary>
+	public static void Clear()
+	{
+		while (_pool.TryDequeue(out _))
+		{
+			Interlocked.Decrement(ref _poolCount);
+		}
+	}
+}
+
+
+public static class GeometryPool
+{
+	private static readonly ConcurrentQueue<GlyphGeometry> _pool = new();
+	private static int _poolCount = 0;
+	private const int MaxPoolSize = 100; // Prevent unbounded growth
+
+	/// <summary>
+	/// Gets a GlyphGeometry from the pool, or creates a new one if pool is empty
+	/// </summary>
+	public static GlyphGeometry Rent()
+	{
+		if (_pool.TryDequeue(out GlyphGeometry? geometry))
+		{
+			Interlocked.Decrement(ref _poolCount);
+			return geometry;
+		}
+
+		return new GlyphGeometry();
+	}
+
+	/// <summary>
+	/// Returns a GlyphGeometry to the pool after clearing its contents
+	/// </summary>
+	public static void Return(GlyphGeometry geometry)
+	{
+		if (geometry == null)
+			return;
+
+		geometry.Reset();
+
+		// Only return to pool if we haven't exceeded max size
+		if (_poolCount < MaxPoolSize)
+		{
+			_pool.Enqueue(geometry);
+			Interlocked.Increment(ref _poolCount);
+		}
+	}
+
+	/// <summary>
+	/// Gets current pool size (approximate due to threading)
+	/// </summary>
+	public static int PoolSize => _poolCount;
+
+	/// <summary>
+	/// Clears all objects from the pool
+	/// </summary>
+	public static void Clear()
+	{
+		while (_pool.TryDequeue(out _))
+		{
+			Interlocked.Decrement(ref _poolCount);
+		}
 	}
 }
