@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace SharpMSDF.Core
 {
-	public static class EdgeColorings
+	/*public static class EdgeColorings
 	{
 		private const int MSDFGEN_EDGE_LENGTH_PRECISION = 4;
 		private const int MAX_RECOLOR_STEPS = 16;
@@ -350,5 +350,5 @@ namespace SharpMSDF.Core
 				}
 			}
 		}
-	}
+	}*/
 }

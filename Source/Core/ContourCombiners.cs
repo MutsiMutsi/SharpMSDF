@@ -43,7 +43,7 @@ namespace SharpMSDF.Core
 			// Initialize data
 			for (int i = 0; i < contourCount; i++)
 			{
-				windings[i] = shape.Contours[i].Winding();
+				windings[i] = shape.GetWinding(i);
 				edgeSelectors[i] = new MultiDistanceSelector();
 			}
 		}

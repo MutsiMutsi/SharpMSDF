@@ -24,13 +24,15 @@ namespace SharpMSDF.SkiaSharp
 		{
 			foreach (var contour in shape.Contours)
 			{
-				if (contour.Edges.Count > 0)
+				if (contour.Count > 0)
 				{
-					var edge = contour.Edges[contour.Edges.Count - 1];
+					var edge = shape.Edges[contour.Start + contour.Count - 1];
 					var controlPoints = edge.ControlPoints();
 					skPath.MoveTo(PointToSkiaPoint(controlPoints[0]));
 
-					foreach (var nextEdge in contour.Edges)
+					var contourEdges = shape.Edges.GetRange(contour.Start, contour.Count);
+
+					foreach (var nextEdge in contourEdges)
 					{
 						var p = edge.ControlPoints();
 						switch (edge.Type)
@@ -41,9 +43,9 @@ namespace SharpMSDF.SkiaSharp
 							case EdgeSegmentType.Quadratic:
 								skPath.QuadTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]));
 								break;
-							/*case EdgeSegmentType.Cubic:
-								skPath.CubicTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]), PointToSkiaPoint(p[3]));
-								break;*/
+								/*case EdgeSegmentType.Cubic:
+									skPath.CubicTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]), PointToSkiaPoint(p[3]));
+									break;*/
 						}
 						edge = nextEdge;
 					}
@@ -53,8 +55,7 @@ namespace SharpMSDF.SkiaSharp
 
 		public static void ShapeFromSkiaPath(ref Shape shape, SKPath skPath)
 		{
-			shape.Contours.Clear();
-			Contour contour = shape.AddContour();
+			shape = new Shape();
 
 			using (var pathIterator = skPath.CreateIterator(true))
 			{
@@ -66,13 +67,13 @@ namespace SharpMSDF.SkiaSharp
 					switch (verb)
 					{
 						case SKPathVerb.Move:
-							if (contour.Edges.Count > 0)
-								contour = shape.AddContour();
+							if (shape.CurrentContourIdx == -1 || shape.Contours[shape.CurrentContourIdx].Count > 0)
+								shape.StartContour();
 							break;
 
 						case SKPathVerb.Line:
 
-							contour.AddEdge(new EdgeSegment(
+							shape.AddEdge(new EdgeSegment(
 								new LinearSegment(
 									PointFromSkiaPoint(edgePoints[0]),
 									PointFromSkiaPoint(edgePoints[1])
@@ -82,7 +83,7 @@ namespace SharpMSDF.SkiaSharp
 
 						case SKPathVerb.Quad:
 
-							contour.AddEdge(new EdgeSegment(
+							shape.AddEdge(new EdgeSegment(
 								new QuadraticSegment(
 									PointFromSkiaPoint(edgePoints[0]),
 									PointFromSkiaPoint(edgePoints[1]),
@@ -116,7 +117,7 @@ namespace SharpMSDF.SkiaSharp
 								(edgePoints[0].Y + 2 * edgePoints[1].Y + edgePoints[2].Y) / 4
 							);
 
-							contour.AddEdge(new EdgeSegment(
+							shape.AddEdge(new EdgeSegment(
 								new QuadraticSegment(
 									PointFromSkiaPoint(edgePoints[0]),
 									PointFromSkiaPoint(mid),
@@ -132,8 +133,8 @@ namespace SharpMSDF.SkiaSharp
 				}
 			}
 
-			if (contour.Edges.Count == 0)
-				shape.Contours.RemoveAt(shape.Contours.Count - 1);
+			//if (shape.Edges.Count == 0)
+			//	shape.Contours.RemoveAt(shape.Contours.Count - 1);
 		}
 
 		private static void PruneCrossedQuadrilaterals(Shape shape)
@@ -141,21 +142,23 @@ namespace SharpMSDF.SkiaSharp
 			int n = 0;
 			for (int i = 0; i < shape.Contours.Count; ++i)
 			{
+				var contourEdges = shape.GetContourEdges(i);
+
 				var contour = shape.Contours[i];
-				if (contour.Edges.Count == 4 &&
-					contour.Edges[0].Type == EdgeSegmentType.Linear &&
-					contour.Edges[1].Type == EdgeSegmentType.Linear &&
-					contour.Edges[2].Type == EdgeSegmentType.Linear &&
-					contour.Edges[3].Type == EdgeSegmentType.Linear)
+				if (contourEdges.Length == 4 &&
+					contourEdges[0].Type == EdgeSegmentType.Linear &&
+					contourEdges[1].Type == EdgeSegmentType.Linear &&
+					contourEdges[2].Type == EdgeSegmentType.Linear &&
+					contourEdges[3].Type == EdgeSegmentType.Linear)
 				{
-					var sum = Sign(CrossProduct(contour.Edges[0].Direction(1), contour.Edges[1].Direction(0))) +
-							  Sign(CrossProduct(contour.Edges[1].Direction(1), contour.Edges[2].Direction(0))) +
-							  Sign(CrossProduct(contour.Edges[2].Direction(1), contour.Edges[3].Direction(0))) +
-							  Sign(CrossProduct(contour.Edges[3].Direction(1), contour.Edges[0].Direction(0)));
+					var sum = Sign(CrossProduct(contourEdges[0].Direction(1), contourEdges[1].Direction(0))) +
+							  Sign(CrossProduct(contourEdges[1].Direction(1), contourEdges[2].Direction(0))) +
+							  Sign(CrossProduct(contourEdges[2].Direction(1), contourEdges[3].Direction(0))) +
+							  Sign(CrossProduct(contourEdges[3].Direction(1), contourEdges[0].Direction(0)));
 
 					if (sum == 0)
 					{
-						contour.Edges.Clear();
+						throw new NotImplementedException();
 					}
 					else
 					{
@@ -198,7 +201,7 @@ namespace SharpMSDF.SkiaSharp
 					ShapeFromSkiaPath(ref shape, simplifiedPath);
 					// In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
 					// which are not valid geometry, so they must be removed.
-					PruneCrossedQuadrilaterals(shape);
+					//PruneCrossedQuadrilaterals(shape);
 					shape.OrientContours();
 					return true;
 				}

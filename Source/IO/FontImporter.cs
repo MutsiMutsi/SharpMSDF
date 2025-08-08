@@ -172,7 +172,7 @@ namespace SharpMSDF.IO
 				for (int i = start; i <= end; i++)
 					contourPts.Add(pts[i]);
 
-				Contour contour = new Contour();
+				shape.StartContour();
 
 				bool firstOff = !contourPts[0].onCurve;
 				GlyphPointF firstPt = firstOff
@@ -198,7 +198,7 @@ namespace SharpMSDF.IO
 							var c2 = ToShapeSpace(pt);
 
 
-							contour.AddEdge(new EdgeSegment(
+							shape.AddEdge(new EdgeSegment(
 								new QuadraticSegment(
 									new Vector2((float)c0.X, (float)c0.Y),
 									new Vector2((float)c1.X, (float)c1.Y),
@@ -212,7 +212,7 @@ namespace SharpMSDF.IO
 						{
 							var c0 = ToShapeSpace(currentOn);
 							var c1 = ToShapeSpace(pt);
-							contour.AddEdge(new EdgeSegment(
+							shape.AddEdge(new EdgeSegment(
 								new LinearSegment(
 								new Vector2((float)c0.X, (float)c0.Y),
 								new Vector2((float)c1.X, (float)c1.Y)
@@ -239,7 +239,7 @@ namespace SharpMSDF.IO
 							var c1 = ToShapeSpace(lastOff);
 							var c2 = ToShapeSpace(implied);
 
-							contour.AddEdge(new EdgeSegment(
+							shape.AddEdge(new EdgeSegment(
 								new QuadraticSegment(
 								new Vector2((float)c0.X, (float)c0.Y),
 								new Vector2((float)c1.X, (float)c1.Y),
@@ -261,7 +261,7 @@ namespace SharpMSDF.IO
 					var c2 = ToShapeSpace(firstPt);
 
 
-					contour.AddEdge(new EdgeSegment(
+					shape.AddEdge(new EdgeSegment(
 						new QuadraticSegment(
 						new Vector2((float)c0.X, (float)c0.Y),
 						new Vector2((float)c1.X, (float)c1.Y),
@@ -274,7 +274,7 @@ namespace SharpMSDF.IO
 					var c0 = ToShapeSpace(currentOn);
 					var c1 = ToShapeSpace(firstPt);
 
-					contour.AddEdge(new EdgeSegment(
+					shape.AddEdge(new EdgeSegment(
 					new LinearSegment(
 						new Vector2((float)c0.X, (float)c0.Y),
 						new Vector2((float)c1.X, (float)c1.Y)
@@ -282,8 +282,6 @@ namespace SharpMSDF.IO
 					));
 
 				}
-
-				shape.Contours.Add(contour);
 				start = end + 1;
 			}
 
