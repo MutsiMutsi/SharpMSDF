@@ -36,33 +36,18 @@ namespace SharpMSDF.Atlas
 				Layout.Add(box);
 			}
 
-			// Pre-allocate buffer large enough for the biggest glyph
-			int bufferSize = maxBoxArea * BitmapView.Channels;
-			var arrayPool = ArrayPool<float>.Shared;
-			var buffer = arrayPool.Rent(bufferSize);
-
-			try
+			for (int i = 0; i < glyphs.Count; i++)
 			{
-				for (int i = 0; i < glyphs.Count; i++)
+				if (!glyphs[i].IsWhitespace)
 				{
-					if (!glyphs[i].IsWhitespace)
-					{
-						glyphs[i].GetBoxRect(out int l, out int b, out int w, out int h);
-						int requiredSize = w * h * BitmapView.Channels;
+					glyphs[i].GetBoxRect(out int l, out int b, out int w, out int h);
+					int requiredSize = w * h * BitmapView.Channels;
 
-						// Buffer should always be large enough now
-						Debug.Assert(buffer.Length >= requiredSize, "Pre-allocated buffer too small");
-
-						Span<float> pixelSpan = buffer.AsSpan(0, requiredSize);
-						var glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
-						GEN_FN(shapes[i], glyphBitmapView, glyphs[i], _Attributes);
-						Storage.Put(l, b, glyphBitmapView);
-					}
+					Span<float> pixelSpan = stackalloc float[requiredSize];
+					var glyphBitmapView = new BitmapView(pixelSpan, w, h, 0, 0, w, h);
+					GEN_FN(shapes[i], glyphBitmapView, glyphs[i], _Attributes);
+					Storage.Put(l, b, glyphBitmapView);
 				}
-			}
-			finally
-			{
-				arrayPool.Return(buffer);
 			}
 		}
 

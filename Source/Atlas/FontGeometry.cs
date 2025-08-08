@@ -16,8 +16,6 @@ namespace SharpMSDF.Atlas
 		private FontMetrics metrics;
 		private GlyphIdentifierType preferredIdentifierType = GlyphIdentifierType.UnicodeCodepoint;
 		private ushort rangeStart, rangeEnd;
-		private readonly Dictionary<ushort, ushort> glyphsByIndex = new();
-		private readonly Dictionary<uint, ushort> glyphsByCodepoint = new();
 		private readonly Dictionary<(ushort, ushort), float> kerning = new();
 		private string? name;
 
@@ -77,7 +75,7 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Loads all glyphs in a charset (Charset elements are Unicode codepoints), returns the number of successfully loaded glyphs
 		/// </summary>
-		public int LoadCharset(List<Shape> shapes, Typeface face, float fontScale, ReadOnlySpan<char> charset, List<GlyphGeometry> glyphSpan, bool preprocessGeometry = true, bool enableKerning = true)
+		public int LoadCharset(List<Shape> shapes, Typeface face, float fontScale, ReadOnlySpan<char> charset, List<GlyphGeometry> glyphSpan, bool preprocessGeometry = true)
 		{
 			LoadMetrics(face, fontScale);
 
@@ -92,9 +90,6 @@ namespace SharpMSDF.Atlas
 					++loaded;
 				}
 			}
-
-			if (enableKerning)
-				LoadKerning(glyphSpan, face);
 
 			preferredIdentifierType = GlyphIdentifierType.UnicodeCodepoint;
 			return loaded;
@@ -126,20 +121,20 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Loads kerning pairs for all glyphs that are currently present, returns the number of loaded kerning pairs
 		/// </summary>
-		public int LoadKerning(List<GlyphGeometry> glyphs, Typeface font)
+		public int LoadKerning(IEnumerable<char> glyphs, Typeface font)
 		{
 			int loaded = 0;
 
-			for (int i = rangeStart; i < rangeEnd; ++i)
+			for (int i = 0; i < glyphs.Count(); ++i)
 			{
-				for (int j = rangeStart; j < rangeEnd; ++j)
+				for (int j = 0; j < glyphs.Count(); ++j)
 				{
-					var glyph1 = glyphs[i];
-					var glyph2 = glyphs[j];
+					var glyph1 = glyphs.ElementAt(i);
+					var glyph2 = glyphs.ElementAt(j);
 
-					if (FontImporter.GetKerning(out float advance, font, glyph1.GetCodepoint, glyph2.GetCodepoint, FontCoordinateScaling.None) && advance != 0.0)
+					if (FontImporter.GetKerning(out float advance, font, glyph1, glyph2, FontCoordinateScaling.None) && advance != 0.0)
 					{
-						kerning[(glyph1.GetIndex, glyph2.GetIndex)] = advance * geometryScale;
+						kerning[(glyph1, glyph2)] = advance * geometryScale;
 						++loaded;
 					}
 				}
