@@ -27,7 +27,7 @@ namespace SharpMSDF.Atlas
 	public class GlyphGeometry
 	{
 		public bool IsWhitespace;
-		private uint _codepoint;
+		private char _codepoint;
 		private float _geometryScale;
 		private Shape.Bounds _bounds;
 		private float _advance;
@@ -36,7 +36,7 @@ namespace SharpMSDF.Atlas
 
 		public GlyphGeometry() { }
 
-		public bool Load(Shape shape, Typeface font, float geometryScale, uint codepoint, bool preprocessGeometry = true)
+		public bool Load(Shape shape, Typeface font, float geometryScale, char codepoint, bool preprocessGeometry = true)
 		{
 			if (shape == null)
 			{
@@ -227,7 +227,7 @@ namespace SharpMSDF.Atlas
 
 		public ushort GetIndex => _index;
 		public ushort GetGlyphIndex => _index;
-		public uint GetCodepoint => _codepoint;
+		public char GetCodepoint => _codepoint;
 
 		//public int GetIdentifier(GlyphIdentifierType type)
 		//{
