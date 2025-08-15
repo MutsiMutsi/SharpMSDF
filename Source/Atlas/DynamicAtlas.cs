@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace SharpMSDF.Atlas
 {
@@ -29,7 +30,10 @@ namespace SharpMSDF.Atlas
 		public TAtlasGen Generator;
 
 
-		public DynamicAtlas() { }
+		public DynamicAtlas()
+		{
+
+		}
 		public DynamicAtlas(TAtlasGen generator, RectanglePacker packer, int minSide, int maxSide)
 		{
 			_Side = CeilPOT(minSide);
@@ -96,7 +100,10 @@ namespace SharpMSDF.Atlas
 				// Only need to call Rearrange/Resize if rearrangement/resizing occurred
 				if ((changeFlags & ChangeFlag.Resized) != 0)
 				{
-					Generator.Resize(_Side, _Side);
+					if (!Generator.Resize(_Side, _Side))
+					{
+						changeFlags = ChangeFlag.NoChange;
+					}
 				}
 
 				for (int i = 0; i < remapBuffer.Count; ++i)

@@ -28,7 +28,7 @@ namespace SharpMSDF.Atlas
 		/// <summary>
 		/// Resizes the atlas and keeps the generated pixels in place.
 		/// </summary>
-		public abstract void Resize(int width, int height);
+		public abstract bool Resize(int width, int height);
 	}
 
 	/// <summary>

@@ -65,9 +65,9 @@ namespace SharpMSDF.Atlas
 			Storage.Init(oldStorage, width, height, remapping.ToArray()[..count]);*/
 		}
 
-		public override void Resize(int width, int height)
+		public override bool Resize(int width, int height)
 		{
-			Storage.Resize(width, height);
+			return Storage.Resize(width, height);
 		}
 
 		public void SetAttributes(GeneratorAttributes attributes)

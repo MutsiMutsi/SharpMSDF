@@ -6,6 +6,14 @@ namespace SharpMSDF.Core
 {
 	public static class VectorExtensions
 	{
+		public static Vector2 Normalize(this Vector2 v, bool allowZero = false)
+		{
+			float len = v.Length();
+			if (len != 0)
+				return new(v.X / len, v.Y / len);
+			return new(0, allowZero ? 0.0f : 1.0f);
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Vector2 GetOrthonormal(this Vector2 v, bool polarity = true, bool allowZero = false)
 		{

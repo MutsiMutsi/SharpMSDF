@@ -17,7 +17,9 @@ namespace SharpMSDF.Core
 
 		private static bool IsCorner(Vector2 aDir, Vector2 bDir, float crossThreshold)
 		{
-			return Vector2.Dot(aDir, bDir) <= 0 || Math.Abs(VectorExtensions.Cross(aDir, bDir)) > crossThreshold;
+			// Check if angle is sharp enough to be considered a corner
+			float dot = Vector2.Dot(aDir, bDir);
+			return dot <= 0 || Math.Abs(VectorExtensions.Cross(aDir, bDir)) > crossThreshold;
 		}
 
 		private static float EstimateEdgeLength(EdgeSegment edge)
@@ -49,7 +51,7 @@ namespace SharpMSDF.Core
 
 		private static EdgeColor InitColor(ref ulong seed)
 		{
-			Span<EdgeColor> colors = [EdgeColor.Cyan, EdgeColor.Magenta, EdgeColor.Yellow];
+			EdgeColor[] colors = { EdgeColor.Cyan, EdgeColor.Magenta, EdgeColor.Yellow };
 			return colors[SeedExtract3(ref seed)];
 		}
 
@@ -63,121 +65,10 @@ namespace SharpMSDF.Core
 		{
 			EdgeColor combined = color & banned;
 			if (combined == EdgeColor.Red || combined == EdgeColor.Green || combined == EdgeColor.Blue)
-				color = (EdgeColor)((int)combined ^ (int)EdgeColor.White);
+				color = (EdgeColor)(combined ^ EdgeColor.White);
 			else
 				SwitchColor(ref color, ref seed);
 		}
-
-		/*public static void Simple(Shape shape, float angleThreshold, ulong seed = 0)
-		{
-			float crossThreshold = MathF.Sin(angleThreshold);
-			EdgeColor color = InitColor(ref seed);
-			List<int> corners = new();
-			EdgeSegment[] parts = new EdgeSegment[7];
-
-			foreach (var contour in shape.Contours)
-			{
-				if (contour.Edges.Count == 0)
-					continue;
-
-				// Identify corners
-				corners.Clear();
-				Vector2 prevDirection = contour.Edges[^1].Direction(1);
-				for (int i = 0; i < contour.Edges.Count; i++)
-				{
-					if (IsCorner(Vector2.Normalize(prevDirection), Vector2.Normalize(contour.Edges[i].Direction(0)), crossThreshold))
-						corners.Add(i);
-					prevDirection = contour.Edges[i].Direction(1);
-				}
-
-				if (corners.Count == 0)
-				{
-					SwitchColor(ref color, ref seed);
-
-					for (int i = 0; i < contour.Edges.Count; i++)
-					{
-						contour.Edges[i] = contour.Edges[i].WithColor(color);
-					}
-
-				}
-				else if (corners.Count == 1)
-				{
-					EdgeColor[] colors = new EdgeColor[3];
-					SwitchColor(ref color, ref seed);
-					colors[0] = color;
-					colors[1] = EdgeColor.White;
-					SwitchColor(ref color, ref seed);
-					colors[2] = color;
-					int corner = corners[0];
-
-					if (contour.Edges.Count >= 3)
-					{
-						int m = contour.Edges.Count;
-						for (int i = 0; i < m; ++i)
-							contour.Edges[(corner + i) % m] = contour.Edges[(corner + i) % m].WithColor(colors[1 + SymmetricalTrichotomy(i, m)]);
-					}
-					else if (contour.Edges.Count >= 1)
-					{
-						contour.Edges[0].SplitInThirds(
-							out parts[0 + 3 * corner],
-							out parts[1 + 3 * corner],
-							out parts[2 + 3 * corner]);
-
-						if (contour.Edges.Count >= 2)
-						{
-							contour.Edges[1].SplitInThirds(
-								out parts[3 - 3 * corner],
-								out parts[4 - 3 * corner],
-								out parts[5 - 3 * corner]);
-
-							parts[0] = parts[0].WithColor(colors[0]);
-							parts[1] = parts[1].WithColor(colors[0]);
-							parts[2] = parts[2].WithColor(colors[1]);
-							parts[3] = parts[3].WithColor(colors[1]);
-							parts[4] = parts[4].WithColor(colors[2]);
-							parts[5] = parts[5].WithColor(colors[2]);
-						}
-						else
-						{
-							parts[0] = parts[0].WithColor(colors[0]);
-							parts[1] = parts[1].WithColor(colors[1]);
-							parts[2] = parts[2].WithColor(colors[2]);
-						}
-
-						contour.Edges.Clear();
-						for (int p = 0; p < parts.Length; p++)
-						{
-							if(parts[p].Type == EdgeSegmentType.None) {
-								throw new Exception("THIS SHOULD NOT HAPPEN");
-							}
-							EdgeSegment part = parts[p];
-							//TODO: REMOVED NULL CHECK if (part != null)
-								contour.Edges.Add(part);
-						}
-					}
-				}
-				else
-				{
-					int cornerCount = corners.Count;
-					int spline = 0;
-					int start = corners[0];
-					int m = contour.Edges.Count;
-					SwitchColor(ref color, ref seed);
-					EdgeColor initialColor = color;
-
-					for (int i = 0; i < m; ++i)
-					{
-						int index = (start + i) % m;
-						if (spline + 1 < cornerCount && corners[spline + 1] == index)
-						{
-							spline++;
-							SwitchColor(ref color, ref seed, (EdgeColor)((spline == cornerCount - 1) ? (int)initialColor : 0));
-						}
-						contour.Edges[index] = contour.Edges[index].WithColor(color);
-					}
-				}
-			}
-		}*/
 
 		private struct InkTrapCorner
 		{
@@ -190,11 +81,10 @@ namespace SharpMSDF.Core
 		[ThreadStatic]
 		private static List<InkTrapCorner> corners = new();
 
-		public static void InkTrap(Shape shape, float angleThreshold, ulong seed)
+		public static void InkTrap(Shape shape, float angleThreshold, ref ulong seed)
 		{
 			float crossThreshold = MathF.Sin(angleThreshold);
 			EdgeColor color = InitColor(ref seed);
-			Span<EdgeColor> colors = stackalloc EdgeColor[3];
 
 			for (int ci = 0; ci < shape.ContourCount; ci++)
 			{
@@ -203,10 +93,19 @@ namespace SharpMSDF.Core
 					continue;
 
 				float splineLength = 0;
-				corners.Clear();
 
-				// Get the last edge's direction for the loop
+				if (corners == null)
+				{
+					corners = [];
+				}
+				else
+				{
+					corners.Clear();
+				}
+
+				// Identify corners
 				Vector2 prevDirection = shape.Edges[contour.Start + contour.Count - 1].Direction(1);
+				int index = 0;
 
 				for (int e = 0; e < contour.Count; e++)
 				{
@@ -215,108 +114,105 @@ namespace SharpMSDF.Core
 					{
 						corners.Add(new InkTrapCorner
 						{
-							Index = e,
-							PrevEdgeLengthEstimate = splineLength
+							Index = index,
+							PrevEdgeLengthEstimate = splineLength,
+							Minor = false
 						});
 						splineLength = 0;
 					}
-
 					splineLength += EstimateEdgeLength(edge);
 					prevDirection = edge.Direction(1);
+					index++;
 				}
 
+				// Smooth contour - no corners
 				if (corners.Count == 0)
 				{
 					SwitchColor(ref color, ref seed);
 					for (int e = 0; e < contour.Count; e++)
-						shape.Edges[contour.Start + e] = shape.Edges[contour.Start + e].WithColor(color);
+					{
+						int edgeIndex = contour.Start + e;
+						shape.Edges[edgeIndex] = shape.Edges[edgeIndex].WithColor(color);
+					}
 				}
+				// "Teardrop" case - single corner
 				else if (corners.Count == 1)
 				{
-					// One-corner ("teardrop") case
+					EdgeColor[] colors = new EdgeColor[3];
 					SwitchColor(ref color, ref seed);
 					colors[0] = color;
 					colors[1] = EdgeColor.White;
 					SwitchColor(ref color, ref seed);
 					colors[2] = color;
 
-					int cornerIndex = corners[0].Index;
+					int corner = corners[0].Index;
 
 					if (contour.Count >= 3)
 					{
 						int m = contour.Count;
-						for (int i = 0; i < m; ++i)
+						for (int i = 0; i < m; i++)
 						{
+							int edgeIndex = contour.Start + (corner + i) % m;
 							int colorIndex = 1 + SymmetricalTrichotomy(i, m);
-							int edgeIndex = contour.Start + (cornerIndex + i) % m;
 							shape.Edges[edgeIndex] = shape.Edges[edgeIndex].WithColor(colors[colorIndex]);
 						}
 					}
 					else if (contour.Count >= 1)
 					{
-						// Split edges and assign colors
-						EdgeSegment a1, a2, a3;
-						EdgeSegment b1 = new(), b2 = new(), b3 = new();
+						// Less than three edge segments for three colors => edges must be split
+						EdgeSegment?[] parts = new EdgeSegment?[7];
 
-						shape.Edges[contour.Start].SplitInThirds(out a1, out a2, out a3);
+						// Split first edge
+						shape.Edges[contour.Start].SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2);
+						parts[0 + 3 * corner] = part0;
+						parts[1 + 3 * corner] = part1;
+						parts[2 + 3 * corner] = part2;
+
 						if (contour.Count >= 2)
-							shape.Edges[contour.Start + 1].SplitInThirds(out b1, out b2, out b3);
-
-						a1 = a1.WithColor(colors[0]);
-						a2 = a2.WithColor(colors[0]);
-						a3 = a3.WithColor(colors[1]);
-
-						if (b1.Type != EdgeSegmentType.None)
 						{
-							b1 = b1.WithColor(colors[1]);
-							b2 = b2.WithColor(colors[2]);
-							b3 = b3.WithColor(colors[2]);
+							// Split second edge
+							shape.Edges[contour.Start + 1].SplitInThirds(out EdgeSegment part3, out EdgeSegment part4, out EdgeSegment part5);
+							parts[3 - 3 * corner] = part3;
+							parts[4 - 3 * corner] = part4;
+							parts[5 - 3 * corner] = part5;
+
+							parts[0] = parts[0]?.WithColor(colors[0]);
+							parts[1] = parts[1]?.WithColor(colors[0]);
+							parts[2] = parts[2]?.WithColor(colors[1]);
+							parts[3] = parts[3]?.WithColor(colors[1]);
+							parts[4] = parts[4]?.WithColor(colors[2]);
+							parts[5] = parts[5]?.WithColor(colors[2]);
+						}
+						else
+						{
+							parts[0] = parts[0]?.WithColor(colors[0]);
+							parts[1] = parts[1]?.WithColor(colors[1]);
+							parts[2] = parts[2]?.WithColor(colors[2]);
 						}
 
-						// Remove original edges and insert new ones
-						// Note: This is tricky because we're modifying the edges list while iterating
-						// We need to handle this carefully to maintain contour integrity
-
-						// First, collect all new edges
-						var newEdges = new List<EdgeSegment> { a1, a2, a3 };
-						if (b1.Type != EdgeSegmentType.None)
-							newEdges.AddRange(new[] { b1, b2, b3 });
-
-						// Remove old edges (in reverse order to maintain indices)
-						for (int i = Math.Min(contour.Count, 2) - 1; i >= 0; i--)
-							shape.Edges.RemoveAt(contour.Start + i);
-
-						// Insert new edges
-						for (int i = 0; i < newEdges.Count; i++)
-							shape.Edges.Insert(contour.Start + i, newEdges[i]);
-
-						// Update this contour's count
-						var updatedContour = contour;
-						updatedContour.Count = newEdges.Count;
-						shape.Contours[ci] = updatedContour;
-
-						// Update start indices for all subsequent contours
-						int deltaEdges = newEdges.Count - Math.Min(contour.Count, 2);
-						for (int k = ci + 1; k < shape.ContourCount; k++)
+						// Replace edges in contour
+						var newEdges = new List<EdgeSegment>();
+						for (int i = 0; i < 7 && parts[i] != null; i++)
 						{
-							var laterContour = shape.Contours[k];
-							laterContour.Start += deltaEdges;
-							shape.Contours[k] = laterContour;
+							newEdges.Add(parts[i].Value);
 						}
+
+						// Update the shape's edge list
+						ReplaceContourEdges(shape, ci, newEdges);
 					}
 				}
+				// Multiple corners
 				else
 				{
-					// Multiple corners
 					int cornerCount = corners.Count;
 					int majorCornerCount = cornerCount;
 
 					// Detect minor corners
 					if (cornerCount > 3)
 					{
-						var first = corners[0];
-						first.PrevEdgeLengthEstimate += splineLength;
-						corners[0] = first;
+						var firstCorner = corners[0];
+						firstCorner.PrevEdgeLengthEstimate += splineLength;
+						corners[0] = firstCorner;
 
 						for (int i = 0; i < cornerCount; i++)
 						{
@@ -328,19 +224,22 @@ namespace SharpMSDF.Core
 							{
 								var corner = corners[i];
 								corner.Minor = true;
-								majorCornerCount--;
 								corners[i] = corner;
+								majorCornerCount--;
 							}
 						}
 					}
 
+					// Assign colors to major corners
 					EdgeColor initialColor = EdgeColor.Black;
 					for (int i = 0; i < cornerCount; i++)
 					{
 						if (!corners[i].Minor)
 						{
 							majorCornerCount--;
-							SwitchColor(ref color, ref seed, majorCornerCount == 0 ? initialColor : 0);
+							EdgeColor targetColor = majorCornerCount == 0 ? initialColor : EdgeColor.Black;
+							SwitchColor(ref color, ref seed, targetColor);
+
 							var corner = corners[i];
 							corner.Color = color;
 							corners[i] = corner;
@@ -350,6 +249,7 @@ namespace SharpMSDF.Core
 						}
 					}
 
+					// Assign colors to minor corners
 					for (int i = 0; i < cornerCount; i++)
 					{
 						if (corners[i].Minor)
@@ -371,16 +271,51 @@ namespace SharpMSDF.Core
 					color = corners[0].Color;
 					int m = contour.Count;
 
-					for (int i = 0; i < m; ++i)
+					for (int i = 0; i < m; i++)
 					{
 						int localIndex = (start + i) % m;
 						int globalIndex = contour.Start + localIndex;
+
 						if (spline + 1 < cornerCount && corners[spline + 1].Index == localIndex)
 							color = corners[++spline].Color;
 
 						shape.Edges[globalIndex] = shape.Edges[globalIndex].WithColor(color);
 					}
 				}
+			}
+		}
+
+		// Helper method to replace edges in a contour while maintaining indices
+		private static void ReplaceContourEdges(Shape shape, int contourIndex, List<EdgeSegment> newEdges)
+		{
+			var contour = shape.Contours[contourIndex];
+			int oldCount = contour.Count;
+			int newCount = newEdges.Count;
+			int delta = newCount - oldCount;
+
+			// Remove old edges (backwards to maintain indices)
+			for (int i = oldCount - 1; i >= 0; i--)
+			{
+				shape.Edges.RemoveAt(contour.Start + i);
+			}
+
+			// Insert new edges
+			for (int i = 0; i < newCount; i++)
+			{
+				shape.Edges.Insert(contour.Start + i, newEdges[i]);
+			}
+
+			// Update this contour's count
+			var updatedContour = contour;
+			updatedContour.Count = newCount;
+			shape.Contours[contourIndex] = updatedContour;
+
+			// Update start indices for subsequent contours
+			for (int ci = contourIndex + 1; ci < shape.ContourCount; ci++)
+			{
+				var laterContour = shape.Contours[ci];
+				laterContour.Start += delta;
+				shape.Contours[ci] = laterContour;
 			}
 		}
 	}

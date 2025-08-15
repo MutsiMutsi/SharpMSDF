@@ -105,9 +105,18 @@ namespace SharpMSDF.Core
 
 		public PerpendicularDistanceSelectorBase()
 		{
-			_minTrueDistance = new SignedDistance();
-			_minNegPerp = -Math.Abs(_minTrueDistance.Distance);
-			_minPosPerp = Math.Abs(_minTrueDistance.Distance);
+			_minTrueDistance = new SignedDistance(); // Assuming this gives a large initial distance
+
+			// Use the absolute value of a large distance, not infinity
+			float initialDist = MathF.Abs(_minTrueDistance.Distance);
+			if (initialDist == 0 || float.IsInfinity(initialDist))
+			{
+				initialDist = 1e6f; // Large but finite value
+			}
+
+			_minNegPerp = -initialDist;
+			_minPosPerp = initialDist;
+			_nearEdge = default;
 			_nearEdgeParam = 0;
 		}
 
@@ -130,15 +139,24 @@ namespace SharpMSDF.Core
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Reset(float delta)
 		{
+			if (_minTrueDistance.Distance == 0) // or however you check validity
+			{
+				// First reset, initialize properly
+				_minTrueDistance = SignedDistance.Infinite;
+			}
+
 			_minTrueDistance.Distance += Arithmetic.NonZeroSign(_minTrueDistance.Distance) * delta;
-			_minNegPerp = -Math.Abs(_minTrueDistance.Distance);
-			_minPosPerp = Math.Abs(_minTrueDistance.Distance);
+			_minNegPerp = -MathF.Abs(_minTrueDistance.Distance);
+			_minPosPerp = MathF.Abs(_minTrueDistance.Distance);
+			_nearEdge = default;
 			_nearEdgeParam = 0;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool IsEdgeRelevant(EdgeCache cache, EdgeSegment edge, Vector2 p)
 		{
+			//TODO: we disabled this check, if issues come re-enable this first!
+			return true;
 			float delta = DISTANCE_DELTA_FACTOR * (p - cache.Point).Length();
 			return
 				cache.AbsDistance - delta <= Math.Abs(_minTrueDistance.Distance)
@@ -203,6 +221,9 @@ namespace SharpMSDF.Core
 
 		internal float ComputeDistance(Vector2 p)
 		{
+			//TODO: Hack removes center dot... if issues arrive, or performance is bad, check this first!!
+			_minPosPerp = float.PositiveInfinity;
+			_minNegPerp = float.NegativeInfinity;
 			float best = _minTrueDistance.Distance < 0 ? _minNegPerp : _minPosPerp;
 			if (_nearEdge.Type != EdgeSegmentType.None)
 			{
@@ -296,41 +317,16 @@ namespace SharpMSDF.Core
 			Vector2 ap = _p - edge.Point(0);
 			Vector2 bp = _p - edge.Point(1);
 
-			//TODO: find out when its needed to normalize...
-			/*
-			 Vector2 aDir = Vector2.Normalize(edge.Direction(0));
-			Vector2 bDir = Vector2.Normalize(edge.Direction(1));
-			Vector2 prevDir = Vector2.Normalize(prev.Direction(1));
-			Vector2 nextDir = Vector2.Normalize(next.Direction(0));
+			Vector2 aDir = edge.Direction(0).Normalize(true);
+			Vector2 bDir = edge.Direction(1).Normalize(true);
+			Vector2 prevDir = prev.Direction(1).Normalize(true);
+			Vector2 nextDir = next.Direction(0).Normalize(true);
 
 			Vector2 aSum = prevDir + aDir;
 			Vector2 bSum = bDir + nextDir;
 
-			float add = Vector2.Dot(ap, Vector2.Normalize(prevDir + aDir));
-			float bdd = -Vector2.Dot(bp, Vector2.Normalize(bDir + nextDir));
-			*/
-
-
-			/*ReadOnlySpan<Vector2> batch = stackalloc Vector2[4]
-			{
-				edge.Direction(0),
-				edge.Direction(1),
-				prev.Direction(1),
-				next.Direction(0)
-			};
-			Span<Vector2> result = stackalloc Vector2[4];
-			VectorExtensions.NormalizeBatch(batch, result);*/
-
-			Vector2 aDir = Vector2.Normalize(edge.Direction(0));
-			Vector2 bDir = Vector2.Normalize(edge.Direction(1));
-			Vector2 prevDir = Vector2.Normalize(prev.Direction(1));
-			Vector2 nextDir = Vector2.Normalize(next.Direction(0));
-
-			Vector2 aSum = prevDir + aDir;
-			Vector2 bSum = bDir + nextDir;
-
-			float add = Vector2.Dot(ap, Vector2.Normalize(prevDir + aDir));
-			float bdd = -Vector2.Dot(bp, Vector2.Normalize(bDir + nextDir));
+			float add = Vector2.Dot(ap, (prevDir + aDir).Normalize(true));
+			float bdd = -Vector2.Dot(bp, (bDir + nextDir).Normalize(true));
 
 
 			cache->ADomainDistance = add;
